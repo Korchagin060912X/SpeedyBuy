@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — маркетплейс{% endblock %}
+
+{% block content %}
+<section class="catalog-section">
+    <div class="section-header">
+        <h2>Маркетплейс</h2>
+    </div>
+
+    <form class="market-tools" method="get" action="{{ url_for('marketplace') }}">
+        <div class="search-group">
+            <label for="search">Поиск</label>
+            <input id="search" name="search" type="text" value="{{ search }}" placeholder="Поиск по названию товара">
+        </div>
+        <div class="search-group">
+            <label for="sort">Сортировка</label>
+            <select id="sort" name="sort">
+                <option value="newest" {% if sort == 'newest' %}selected{% endif %}>По новизне</option>
+                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Цена: низкая → высокая</option>
+                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Цена: высокая → низкая</option>
+            </select>
+        </div>
+    </form>
+
+    <div class="filters">
+        <a href="{{ url_for('marketplace', category='all', search=search, sort=sort) }}" class="chip {% if active_category == 'all' %}active{% endif %}">Все</a>
+        {% for category in categories %}
+            <a href="{{ url_for('marketplace', category=category, search=search, sort=sort) }}" class="chip {% if active_category == category %}active{% endif %}">{{ category }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="tabs-row">
+        <a href="{{ url_for('marketplace', category='Подписки', search=search, sort=sort) }}" class="tab {% if active_category == 'Подписки' %}active{% endif %}">Подписки</a>
+        <a href="{{ url_for('marketplace', category='Ключи', search=search, sort=sort) }}" class="tab {% if active_category == 'Ключи' %}active{% endif %}">Ключи</a>
+        <a href="{{ url_for('marketplace', category='Игры', search=search, sort=sort) }}" class="tab {% if active_category == 'Игры' %}active{% endif %}">Игры</a>
+    </div>
+
+    {% if products %}
+        <div class="product-grid">
+            {% for product in products %}
+                <article class="product-card">
+                    <span class="badge">{{ product.category }}</span>
+                    <h3>{{ product.name }}</h3>
+                    <p class="product-type">{{ product.app_type }}</p>
+                    <p>{{ product.description[:90] }}{% if product.description|length > 90 %}...{% endif %}</p>
+                    <div class="product-footer">
+                        <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
+                            <button type="submit">В корзину</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-box">
+            <p>Нет результатов по вашему запросу.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

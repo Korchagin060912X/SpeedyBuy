@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — маркетплейс цифровых товаров{% endblock %}
+
+{% block content %}
+<section class="hero-panel">
+    <div class="hero-copy">
+        <span class="eyebrow">Цифровые товары и подписки</span>
+        <h1>SpeedyBuy</h1>
+        <p class="lead">Покупай быстро и дешево только на SpeedyBuy.</p>
+        <p>Твой удобный магазин цифровых товаров: ключи, игры, подписки и популярные аксессуары для геймеров.</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('index', category='all') }}" class="primary-btn">Перейти в маркетплейс</a>
+            <a href="#faq" class="secondary-btn">FAQ</a>
+        </div>
+    </div>
+</section>
+
+<section class="info-block">
+    <h2>О проекте</h2>
+    <p>
+        SpeedyBuy — магазин цифровых товаров, где вы можете найти игровые ключи, игры Steam, подписки и другие цифровые продукты.
+    </p>
+    <p>
+        Мы работаем с 2026 года и стремимся сделать покупки простыми, быстрыми и удобными. Наш каталог постепенно пополняется новыми товарами, а служба поддержки готова помочь при возникновении вопросов.
+    </p>
+    <p>
+        Выбирайте товары, добавляйте их в корзину и оформляйте заказы в удобном интерфейсе SpeedyBuy.
+    </p>
+</section>
+
+<section class="catalog-section">
+    <div class="section-header">
+        <h2>Популярные товары</h2>
+        <a href="{{ url_for('index', category='all') }}">Смотреть всё</a>
+    </div>
+    <div class="product-grid">
+        {% for product in popular_products %}
+            <article class="product-card">
+                <span class="badge">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.description }}</p>
+                <div class="product-footer">
+                    <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
+                        <button type="submit">В корзину</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="catalog-section">
+    <div class="section-header">
+        <h2>Новинки каталога</h2>
+        <a href="{{ url_for('index', category='all') }}">Смотреть всё</a>
+    </div>
+    <div class="product-grid">
+        {% for product in new_products %}
+            <article class="product-card">
+                <span class="badge">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.description }}</p>
+                <div class="product-footer">
+                    <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
+                        <button type="submit">В корзину</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="benefits-section">
+    <h2>Почему выбирают SpeedyBuy</h2>
+    <div class="benefits-grid">
+        <div class="benefit-card">
+            <h3>Быстрая доставка</h3>
+            <p>Ключи и подписки приходят оперативно и без лишних шагов.</p>
+        </div>
+        <div class="benefit-card">
+            <h3>Поддержка 24/7</h3>
+            <p>Команда помогает решить вопросы и не оставляет клиента без ответа.</p>
+        </div>
+        <div class="benefit-card">
+            <h3>Актуальные цены</h3>
+            <p>Мы регулярно обновляем каталог и предлагаем выгодные предложения.</p>
+        </div>
+    </div>
+</section>
+
+<section id="faq" class="faq-box">
+    <h2>FAQ</h2>
+    <div class="faq-item">
+        <strong>Как быстро приходит ключ?</strong>
+        <p>Обычно автоматически после оплаты в течение нескольких минут.</p>
+    </div>
+    <div class="faq-item">
+        <strong>Можно ли оформить возврат?</strong>
+        <p>Если ключ уже использован, возврат обычно не предусмотрен, но поддержка поможет разобраться.</p>
+    </div>
+</section>
+
+<section id="support" class="support-box">
+    <h2>Поддержка</h2>
+    <p>Если у вас возникли вопросы, напишите в поддержку или откройте чат в личном кабинете.</p>
+    <a href="#" class="primary-btn">Связаться с поддержкой</a>
+</section>
+
+<div class="filters">
+    <a href="{{ url_for('index', category='all') }}" class="chip {% if active_category == 'all' %}active{% endif %}">
+        Все товары
+    </a>
+    {% for category in categories %}
+        <a href="{{ url_for('index', category=category) }}" class="chip {% if active_category == category %}active{% endif %}">
+            {{ category }}
+        </a>
+    {% endfor %}
+</div>
+
+<div class="product-grid catalog-grid">
+    {% for product in products %}
+        <article class="product-card">
+            <span class="badge">{{ product.category }}</span>
+            <h3>{{ product.name }}</h3>
+            <p>{{ product.description }}</p>
+            <div class="product-footer">
+                <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
+                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
+                    <button type="submit">В корзину</button>
+                </form>
+            </div>
+        </article>
+    {% endfor %}
+</div>
+</section>
+{% endblock %}

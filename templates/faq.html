@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — FAQ{% endblock %}
+
+{% block content %}
+<section class="faq-box">
+    <h2>Часто задаваемые вопросы</h2>
+    {% for item in faq_items %}
+        <details class="faq-item" {% if loop.first %}open{% endif %}>
+            <summary>{{ item.question }}</summary>
+            <p>{{ item.answer }}</p>
+        </details>
+    {% else %}
+        <p>Вопросы пока не добавлены.</p>
+    {% endfor %}
+</section>
+{% endblock %}

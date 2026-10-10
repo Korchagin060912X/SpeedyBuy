@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SpeedyBuy{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="container nav">
+            <div class="brand-wrap">
+                <a href="{{ url_for('index') }}" class="brand">SpeedyBuy</a>
+                <button class="menu-toggle" type="button">☰</button>
+            </div>
+            <nav class="menu">
+                <a href="{{ url_for('index') }}">Главная</a>
+                <a href="{{ url_for('marketplace') }}">Маркетплейс</a>
+                <a href="{{ url_for('faq_page') }}">FAQ</a>
+                <a href="{{ url_for('support_page') }}">Поддержка</a>
+                <a href="{{ url_for('profile_page') }}">Профиль</a>
+                <a href="{{ url_for('cart_page') }}" class="cart-link">Корзина <span class="cart-badge">{{ cart_count }}</span></a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container content">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-box">
+                    {% for message in messages %}
+                        <div>{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-grid">
+            <div>
+                <h3>SpeedyBuy</h3>
+                <p>© SpeedyBuy 2026.</p>
+            </div>
+            <div>
+                <h4>Навигация</h4>
+                <ul>
+                    <li><a href="{{ url_for('marketplace') }}">Маркетплейс</a></li>
+                    <li><a href="{{ url_for('faq_page') }}">FAQ</a></li>
+                    <li><a href="{{ url_for('support_page') }}">Поддержка</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Соцсети</h4>
+                <ul>
+                    <li><a href="{{ social_links.telegram if social_links else 'https://t.me/speedybuy' }}" target="_blank" rel="noopener">Telegram</a></li>
+                    <li><a href="{{ social_links.tiktok if social_links else 'https://www.tiktok.com/@speedybuy' }}" target="_blank" rel="noopener">TikTok</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

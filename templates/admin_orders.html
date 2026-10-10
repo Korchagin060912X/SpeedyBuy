@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — заказы{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Заказы</h2>
+    <div class="admin-actions">
+        <a href="{{ url_for('admin_orders') }}" class="secondary-btn">Заказы</a>
+        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Товары</a>
+    </div>
+
+    {% if orders %}
+        <div class="cart-list">
+            {% for order in orders %}
+                <div class="cart-item">
+                    <div>
+                        <h3>#{{ order.id }} — {{ order.customer_name }}</h3>
+                        <p>{{ order.phone }}</p>
+                        <p>{{ order.address }}</p>
+                    </div>
+                    <div class="cart-meta">
+                        <span>{{ order.total_price }} ₽</span>
+                        <a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="primary-btn">Подробнее</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Заказов пока нет.</p>
+    {% endif %}
+</section>
+{% endblock %}

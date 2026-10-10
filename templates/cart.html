@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — корзина{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Корзина</h2>
+
+    {% if items %}
+        <div class="cart-list">
+            {% for item in items %}
+                <div class="cart-item">
+                    <div>
+                        <h3>{{ item.name }}</h3>
+                        <p>{{ item.category }}</p>
+                    </div>
+                    <div class="cart-meta">
+                        <span>{{ item.quantity }} шт.</span>
+                        <strong>{{ "{:,.0f}".format(item.item_total) }} ₽</strong>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="checkout-panel">
+            <p>Товаров: {{ item_count }}</p>
+            <h3>Итого: {{ "{:,.0f}".format(total) }} ₽</h3>
+            <a class="primary-btn" href="{{ url_for('checkout') }}">Перейти к оформлению</a>
+        </div>
+    {% else %}
+        <p>Корзина пуста. Добавьте товары из каталога.</p>
+    {% endif %}
+</section>
+{% endblock %}

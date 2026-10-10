@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — админ-панель{% endblock %}
+
+{% block content %}
+<section class="checkout-layout">
+    <div class="checkout-form">
+        <h2>Админ-панель</h2>
+        <p>Вход только для администратора.</p>
+        <p><strong>Логин:</strong> admin</p>
+        <p><strong>Пароль:</strong> admin123</p>
+
+        <form method="post" action="{{ url_for('admin_panel') }}">
+            <label>
+                Логин
+                <input type="text" name="username" value="admin" required>
+            </label>
+            <label>
+                Пароль
+                <input type="password" name="password" value="admin123" required>
+            </label>
+            <button type="submit" class="primary-btn">Войти в админку</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

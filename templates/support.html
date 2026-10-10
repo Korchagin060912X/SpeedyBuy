@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — поддержка{% endblock %}
+
+{% block content %}
+<section class="support-box">
+    {% if not user %}
+        <h2>Отвечаем всегда 😎 — Главное, терпение!</h2>
+        <p>Чтобы обратиться в поддержку, войдите в аккаунт или зарегистрируйтесь.</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('profile_page') }}" class="primary-btn">Войти</a>
+            <a href="{{ url_for('profile_page') }}" class="secondary-btn">Зарегистрироваться</a>
+        </div>
+    {% else %}
+        <h2>Поддержка</h2>
+        <form method="post" class="checkout-form">
+            <label>
+                Тема
+                <input type="text" name="subject" placeholder="Проблема с заказом">
+            </label>
+            <label>
+                Сообщение
+                <textarea name="message" rows="4" placeholder="Опишите вашу проблему" required></textarea>
+            </label>
+            <button type="submit" class="primary-btn">Отправить</button>
+        </form>
+
+        {% if threads %}
+            <div class="chat-history">
+                {% for item in threads %}
+                    <div class="chat-thread">
+                        <h4>{{ item.thread.subject }}</h4>
+                        {% for msg in item.messages %}
+                            <div class="chat-message {% if msg.is_admin %}admin{% else %}user{% endif %}">
+                                <strong>{% if msg.is_admin %}Поддержка{% else %}{{ msg.sender_name }}{% endif %}</strong>
+                                <p>{{ msg.message }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

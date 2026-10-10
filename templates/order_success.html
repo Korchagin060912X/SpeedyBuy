@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — заказ оформлен{% endblock %}
+
+{% block content %}
+<section class="success-box">
+    <h2>Заказ успешно оформлен</h2>
+    <p>Спасибо, {{ order.name }}! Ваш заказ принят на обработку.</p>
+    <p>Телефон: {{ order.phone }}</p>
+    <p>Адрес: {{ order.address }}</p>
+    <p><strong>Итого: {{ "{:,.0f}".format(order.total) }} ₽</strong></p>
+    <a class="primary-btn" href="{{ url_for('index') }}">Вернуться в каталог</a>
+</section>
+{% endblock %}

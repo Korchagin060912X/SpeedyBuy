@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — детали заказа{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Детали заказа #{{ order.id }}</h2>
+
+    <div class="order-summary">
+        <p><strong>Клиент:</strong> {{ order.customer_name }}</p>
+        <p><strong>Телефон:</strong> {{ order.phone }}</p>
+        <p><strong>Адрес:</strong> {{ order.address }}</p>
+        <p><strong>Сумма:</strong> {{ order.total_price }} ₽</p>
+    </div>
+
+    <div class="cart-list">
+        {% for item in items %}
+            <div class="cart-item">
+                <div>
+                    <h3>{{ item.product_name }}</h3>
+                    <p>{{ item.category }}</p>
+                </div>
+                <div class="cart-meta">
+                    <span>{{ item.quantity }} шт.</span>
+                    <strong>{{ item.item_total }} ₽</strong>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <a class="primary-btn" href="{{ url_for('admin_orders') }}">Назад к заказам</a>
+</section>
+{% endblock %}

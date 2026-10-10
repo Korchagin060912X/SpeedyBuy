@@ -1,0 +1,379 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #080b12;
+    color: #f5f7fa;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.container {
+    width: min(1200px, calc(100% - 32px));
+    margin: 0 auto;
+}
+
+.topbar {
+    background: #101725;
+    border-bottom: 1px solid #24334b;
+    color: #fff;
+    padding: 16px 0;
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.brand {
+    color: #f5f7fa;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 1.4rem;
+}
+
+.menu {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.menu a {
+    color: #9aa8bc;
+    text-decoration: none;
+}
+
+.content {
+    padding: 32px 0 60px;
+}
+
+.hero-panel {
+    background: linear-gradient(135deg, #131c2d 0%, #1677ff 100%);
+    border: 1px solid #24334b;
+    border-radius: 24px;
+    padding: 56px 36px;
+    margin-bottom: 28px;
+}
+
+.eyebrow {
+    color: #38b6ff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.hero-copy h1 {
+    margin: 12px 0 14px;
+    font-size: clamp(2.4rem, 5vw, 4.4rem);
+    line-height: 1.1;
+}
+
+.lead {
+    font-size: clamp(1.1rem, 2vw, 1.6rem);
+    color: #f5f7fa;
+    margin-bottom: 18px;
+}
+
+.hero-copy p {
+    color: #dbeafe;
+    max-width: 720px;
+    margin: 0 0 24px;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.secondary-btn {
+    border: 1px solid #24334b;
+    border-radius: 10px;
+    background: transparent;
+    color: #f5f7fa;
+    text-decoration: none;
+    padding: 10px 16px;
+    font-weight: 700;
+}
+
+.primary-btn, button {
+    border: none;
+    border-radius: 10px;
+    background: #1677ff;
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.primary-btn:hover, button:hover {
+    background: #0f5fe0;
+}
+
+.info-block,
+.catalog-section,
+.benefits-section,
+.faq-box,
+.support-box,
+.order-summary,
+.cart-item,
+.checkout-panel,
+.checkout-form,
+.success-box,
+.product-card {
+    background: #131c2d;
+    border: 1px solid #24334b;
+    border-radius: 18px;
+}
+
+.info-block,
+.catalog-section,
+.benefits-section,
+.faq-box,
+.support-box {
+    padding: 28px 24px;
+    margin-bottom: 26px;
+}
+
+.info-block p,
+.benefit-card p,
+.faq-item p,
+.support-box p {
+    color: #9aa8bc;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.section-header a {
+    color: #38b6ff;
+    text-decoration: none;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.badge {
+    display: inline-block;
+    width: fit-content;
+    background: rgba(56, 182, 255, 0.12);
+    color: #38b6ff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.product-card h3 {
+    margin: 0;
+}
+
+.product-card p {
+    margin: 0;
+    color: #9aa8bc;
+    flex-grow: 1;
+}
+
+.product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 20px 0 26px;
+}
+
+.chip {
+    text-decoration: none;
+    background: #101725;
+    color: #f5f7fa;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid #24334b;
+    font-weight: 600;
+}
+
+.chip.active {
+    background: #1677ff;
+    border-color: #1677ff;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+.benefit-card {
+    background: #101725;
+    border: 1px solid #24334b;
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.faq-item {
+    background: #101725;
+    border: 1px solid #24334b;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-top: 12px;
+}
+
+.site-footer {
+    background: #101725;
+    border-top: 1px solid #24334b;
+    padding: 28px 0;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 24px;
+}
+
+.footer-grid h3,
+.footer-grid h4 {
+    margin-top: 0;
+}
+
+.footer-grid ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.footer-grid a,
+.footer-grid p {
+    color: #9aa8bc;
+    text-decoration: none;
+}
+
+.cart-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+}
+
+.cart-item h3 {
+    margin: 0 0 4px;
+}
+
+.cart-item p {
+    margin: 0;
+    color: #9aa8bc;
+}
+
+.cart-meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.checkout-panel {
+    margin-top: 18px;
+    padding: 20px;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.checkout-form {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+}
+
+.checkout-form label {
+    display: grid;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.checkout-form input,
+.checkout-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #24334b;
+    border-radius: 10px;
+    background: #0d1522;
+    color: #f5f7fa;
+    font: inherit;
+}
+
+.summary-item, .summary-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.summary-total {
+    font-size: 1.1rem;
+}
+
+.success-box {
+    text-align: center;
+    max-width: 700px;
+    margin: 40px auto 0;
+    padding: 24px;
+}
+
+@media (max-width: 700px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .nav {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-panel {
+        padding: 42px 20px;
+    }
+}

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — товары{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Управление товарами</h2>
+
+    <div class="admin-actions">
+        <a href="{{ url_for('admin_orders') }}" class="secondary-btn">Заказы</a>
+        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Товары</a>
+    </div>
+
+    <div class="checkout-form">
+        <h3>Добавить товар</h3>
+        <form method="post" action="{{ url_for('admin_products_add') }}">
+            <label>
+                Название
+                <input type="text" name="name" required>
+            </label>
+            <label>
+                Категория
+                <select name="category" required>
+                    <option value="Подписки">Подписки</option>
+                    <option value="Ключи">Ключи</option>
+                    <option value="Игры">Игры</option>
+                </select>
+            </label>
+            <label>
+                Цена
+                <input type="number" name="price" min="1" step="0.01" required>
+            </label>
+            <label>
+                Платформа / тип
+                <input type="text" name="app_type" placeholder="Steam, Xbox, EA Sports">
+            </label>
+            <label>
+                Описание
+                <textarea name="description" rows="4" required></textarea>
+            </label>
+            <button type="submit" class="primary-btn">Добавить товар</button>
+        </form>
+    </div>
+
+    <div class="cart-list">
+        {% for product in products %}
+            <div class="cart-item">
+                <div>
+                    <h3>{{ product.name }}</h3>
+                    <p>{{ product.category }} · {{ product.app_type }}</p>
+                    <p>{{ product.description[:80] }}</p>
+                </div>
+                <div class="cart-meta">
+                    <span>{{ product.price }} ₽</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

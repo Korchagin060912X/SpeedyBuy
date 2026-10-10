@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — профиль{% endblock %}
+
+{% block content %}
+<section class="checkout-layout">
+    {% if not user %}
+        <div class="checkout-form">
+            <h2>Войти</h2>
+            <form method="post">
+                <input type="hidden" name="action" value="login">
+                <label>
+                    Никнейм
+                    <input type="text" name="username" required>
+                </label>
+                <label>
+                    Пароль
+                    <input type="password" name="password" required>
+                </label>
+                <button type="submit" class="primary-btn">Войти</button>
+            </form>
+        </div>
+
+        <div class="checkout-form">
+            <h2>Зарегистрироваться</h2>
+            <form method="post">
+                <input type="hidden" name="action" value="register">
+                <label>
+                    Никнейм
+                    <input type="text" name="username" required>
+                </label>
+                <label>
+                    Пароль
+                    <input type="password" name="password" required>
+                </label>
+                <button type="submit" class="primary-btn">Зарегистрироваться</button>
+            </form>
+        </div>
+    {% else %}
+        <div class="checkout-form">
+            <h2>Личный кабинет</h2>
+            <p>Никнейм: <strong>{{ user.username }}</strong></p>
+            <p>Дата регистрации: {{ user.created_at[:10] if user.created_at else '—' }}</p>
+            <a href="{{ url_for('logout') }}" class="primary-btn">Выйти</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
