@@ -203,6 +203,9 @@ def init_db():
             else:
                 default_sql = 'TEXT DEFAULT ""'
             conn.execute(f'ALTER TABLE products ADD COLUMN {field} {default_sql}')
+    if 'created_at' not in product_columns:
+        conn.execute('ALTER TABLE products ADD COLUMN created_at TEXT')
+        conn.execute('UPDATE products SET created_at = CURRENT_TIMESTAMP')
 
     order_columns = {row['name'] for row in conn.execute('PRAGMA table_info(orders)').fetchall()}
     for field, default_sql in {
@@ -308,14 +311,28 @@ def get_product_by_id(product_id):
 
 def get_popular_products(limit=3):
     conn = get_db()
-    rows = conn.execute('SELECT * FROM products WHERE is_active = 1 AND is_popular = 1 ORDER BY id DESC LIMIT ?', (limit,)).fetchall()
+    rows = conn.execute(
+        '''
+        SELECT p.*, COUNT(DISTINCT oi.order_id) AS order_count
+        FROM products p
+        JOIN order_items oi ON oi.product_id = p.id
+        WHERE p.is_active = 1
+        GROUP BY p.id
+        ORDER BY order_count DESC, p.created_at DESC, p.id DESC
+        LIMIT ?
+        ''',
+        (limit,)
+    ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
 
 def get_new_products(limit=3):
     conn = get_db()
-    rows = conn.execute('SELECT * FROM products WHERE is_active = 1 AND is_new = 1 ORDER BY id DESC LIMIT ?', (limit,)).fetchall()
+    rows = conn.execute(
+        'SELECT * FROM products WHERE is_active = 1 ORDER BY created_at DESC, id DESC LIMIT ?',
+        (limit,)
+    ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
@@ -420,11 +437,12 @@ def create_order_in_db(name, phone, address, cart):
     return {'id': order_id, 'name': cleaned['name'], 'phone': cleaned['phone'], 'address': cleaned['address'], 'items': items, 'total': total}
 
 
-def create_product_in_db(name, category, price, description, app_type=''):
+def create_product_in_db(name, category, price, description, app_type='', image_url=''):
     name = sanitize_text(name, 120)
     category = sanitize_text(category, 80)
     description = sanitize_text(description, 1000)
     app_type = sanitize_text(app_type, 80)
+    image_url = sanitize_text(image_url, 2048)
     try:
         price_value = float(price)
     except (TypeError, ValueError):
@@ -433,8 +451,8 @@ def create_product_in_db(name, category, price, description, app_type=''):
         return False
     conn = get_db()
     conn.execute(
-        'INSERT INTO products (name, category, price, description, app_type, image_url, is_active, is_popular, is_new) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (name, category, price_value, description, app_type, '', 1, 0, 0)
+        'INSERT INTO products (name, category, price, description, app_type, image_url, is_active, is_popular, is_new, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+        (name, category, price_value, description, app_type, image_url, 1, 0, 0)
     )
     conn.commit(); conn.close()
     return True
@@ -683,8 +701,87 @@ def admin_products():
     user = get_current_user()
     if not is_admin_user(user):
         return redirect(url_for('admin_panel'))
-    products = get_products()
-    return render_template('admin_products.html', products=products)
+    conn = get_db()
+    products = [dict(row) for row in conn.execute(
+        'SELECT * FROM products WHERE is_active = 1 ORDER BY id DESC'
+    ).fetchall()]
+    deleted_products = [dict(row) for row in conn.execute(
+        'SELECT * FROM products WHERE is_active = 0 ORDER BY id DESC'
+    ).fetchall()]
+    conn.close()
+    return render_template(
+        'admin_products.html',
+        products=products,
+        deleted_products=deleted_products
+    )
+
+
+@app.route('/admin/products/<int:product_id>/edit', methods=['GET', 'POST'])
+def admin_products_edit(product_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+
+    product = get_product_by_id(product_id)
+    if product is None:
+        abort(404)
+
+    if request.method == 'POST':
+        name = sanitize_text(request.form.get('name'), 120)
+        image_url = sanitize_text(request.form.get('image_url'), 2048)
+        if not name:
+            flash('Название товара обязательно.')
+            return render_template('admin_product_edit.html', product=product)
+
+        conn = get_db()
+        conn.execute(
+            'UPDATE products SET name = ?, image_url = ? WHERE id = ?',
+            (name, image_url, product_id)
+        )
+        conn.commit()
+        conn.close()
+        flash('Товар обновлён.')
+        return redirect(url_for('admin_products'))
+
+    return render_template('admin_product_edit.html', product=product)
+
+
+@app.route('/admin/products/<int:product_id>/delete', methods=['POST'])
+def admin_products_delete(product_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    cursor = conn.execute(
+        'UPDATE products SET is_active = 0 WHERE id = ? AND is_active = 1',
+        (product_id,)
+    )
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        abort(404)
+    flash('Товар удалён из каталога.')
+    return redirect(url_for('admin_products'))
+
+
+@app.route('/admin/products/<int:product_id>/restore', methods=['POST'])
+def admin_products_restore(product_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    cursor = conn.execute(
+        'UPDATE products SET is_active = 1 WHERE id = ? AND is_active = 0',
+        (product_id,)
+    )
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        abort(404)
+    flash('Товар восстановлен в каталоге.')
+    return redirect(url_for('admin_products'))
 
 
 @app.route('/admin/products/add', methods=['POST'])
@@ -697,7 +794,8 @@ def admin_products_add():
     price = request.form.get('price', '').strip()
     description = request.form.get('description', '').strip()
     app_type = request.form.get('app_type', '').strip()
-    if create_product_in_db(name, category, price, description, app_type):
+    image_url = request.form.get('image_url', '').strip()
+    if create_product_in_db(name, category, price, description, app_type, image_url):
         flash('Товар успешно добавлен.')
     else:
         flash('Ошибка: проверьте название, цену и категорию.')

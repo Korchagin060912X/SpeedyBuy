@@ -10,7 +10,7 @@
         <p class="lead">Покупай быстро и дешево только на SpeedyBuy.</p>
         <p>Твой удобный магазин цифровых товаров: ключи, игры, подписки и популярные аксессуары для геймеров.</p>
         <div class="hero-actions">
-            <a href="{{ url_for('index', category='all') }}" class="primary-btn">Перейти в маркетплейс</a>
+            <a href="{{ url_for('marketplace') }}" class="primary-btn">Перейти в маркетплейс</a>
             <a href="#faq" class="secondary-btn">FAQ</a>
         </div>
     </div>
@@ -32,11 +32,14 @@
 <section class="catalog-section">
     <div class="section-header">
         <h2>Популярные товары</h2>
-        <a href="{{ url_for('index', category='all') }}">Смотреть всё</a>
+        <a href="{{ url_for('marketplace') }}">Смотреть всё</a>
     </div>
     <div class="product-grid">
         {% for product in popular_products %}
             <article class="product-card">
+                {% if product.image_url %}
+                    <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
                 <p>{{ product.description }}</p>
@@ -54,11 +57,14 @@
 <section class="catalog-section">
     <div class="section-header">
         <h2>Новинки каталога</h2>
-        <a href="{{ url_for('index', category='all') }}">Смотреть всё</a>
+        <a href="{{ url_for('marketplace') }}">Смотреть всё</a>
     </div>
     <div class="product-grid">
         {% for product in new_products %}
             <article class="product-card">
+                {% if product.image_url %}
+                    <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
                 <p>{{ product.description }}</p>
@@ -106,34 +112,6 @@
 <section id="support" class="support-box">
     <h2>Поддержка</h2>
     <p>Если у вас возникли вопросы, напишите в поддержку или откройте чат в личном кабинете.</p>
-    <a href="#" class="primary-btn">Связаться с поддержкой</a>
-</section>
-
-<div class="filters">
-    <a href="{{ url_for('index', category='all') }}" class="chip {% if active_category == 'all' %}active{% endif %}">
-        Все товары
-    </a>
-    {% for category in categories %}
-        <a href="{{ url_for('index', category=category) }}" class="chip {% if active_category == category %}active{% endif %}">
-            {{ category }}
-        </a>
-    {% endfor %}
-</div>
-
-<div class="product-grid catalog-grid">
-    {% for product in products %}
-        <article class="product-card">
-            <span class="badge">{{ product.category }}</span>
-            <h3>{{ product.name }}</h3>
-            <p>{{ product.description }}</p>
-            <div class="product-footer">
-                <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
-                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
-                    <button type="submit">В корзину</button>
-                </form>
-            </div>
-        </article>
-    {% endfor %}
-</div>
+    <a href="{{ url_for('support_page') }}" class="primary-btn">Связаться с поддержкой</a>
 </section>
 {% endblock %}

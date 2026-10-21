@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование товара — SpeedyBuy{% endblock %}
+
+{% block content %}
+<section class="catalog-section">
+    <h2>Редактирование товара</h2>
+    <form method="post" class="checkout-form">
+        <label>
+            Название
+            <input type="text" name="name" value="{{ product.name }}" maxlength="120" required>
+        </label>
+        <label>
+            Ссылка на изображение
+            <input type="url" name="image_url" value="{{ product.image_url }}" maxlength="2048" placeholder="https://example.com/image.jpg">
+        </label>
+        {% if product.image_url %}
+            <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}">
+        {% endif %}
+        <button type="submit" class="primary-btn">Сохранить изменения</button>
+        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Назад к товарам</a>
+    </form>
+</section>
+{% endblock %}

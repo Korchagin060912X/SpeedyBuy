@@ -35,6 +35,10 @@
                 <input type="text" name="app_type" placeholder="Steam, Xbox, EA Sports">
             </label>
             <label>
+                Ссылка на изображение
+                <input type="url" name="image_url" placeholder="https://example.com/image.jpg">
+            </label>
+            <label>
                 Описание
                 <textarea name="description" rows="4" required></textarea>
             </label>
@@ -46,15 +50,51 @@
         {% for product in products %}
             <div class="cart-item">
                 <div>
+                    {% if product.image_url %}
+                        <img class="admin-product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                    {% endif %}
                     <h3>{{ product.name }}</h3>
                     <p>{{ product.category }} · {{ product.app_type }}</p>
                     <p>{{ product.description[:80] }}</p>
                 </div>
                 <div class="cart-meta">
                     <span>{{ product.price }} ₽</span>
+                    <a href="{{ url_for('admin_products_edit', product_id=product.id) }}" class="secondary-btn">Редактировать</a>
+                    <form method="post" action="{{ url_for('admin_products_delete', product_id=product.id) }}" onsubmit="return confirm('Удалить товар из каталога?')">
+                        <button type="submit" class="danger-btn">Удалить</button>
+                    </form>
                 </div>
             </div>
         {% endfor %}
     </div>
+
+    <section class="deleted-products-section">
+        <h2>Удалённые товары</h2>
+        {% if deleted_products %}
+            <div class="cart-list">
+                {% for product in deleted_products %}
+                    <div class="cart-item admin-product-inactive">
+                        <div>
+                            {% if product.image_url %}
+                                <img class="admin-product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                            {% endif %}
+                            <h3>{{ product.name }}</h3>
+                            <p>{{ product.category }} · {{ product.app_type }}</p>
+                            <p>{{ product.description[:80] }}</p>
+                            <p class="admin-product-status">Удалён из каталога</p>
+                        </div>
+                        <div class="cart-meta">
+                            <span>{{ product.price }} ₽</span>
+                            <form method="post" action="{{ url_for('admin_products_restore', product_id=product.id) }}">
+                                <button type="submit">Восстановить</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="admin-product-status">Удалённых товаров нет.</p>
+        {% endif %}
+    </section>
 </section>
 {% endblock %}

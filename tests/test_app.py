@@ -1,5 +1,8 @@
+import sqlite3
+
 import pytest
-from app import app, get_products, get_orders
+import app as app_module
+from app import app, get_new_products, get_orders, get_popular_products, get_products
 
 
 @pytest.fixture()
@@ -17,6 +20,11 @@ def test_homepage_has_title_and_products(client):
     assert 'Покупай быстро и дешево только на SpeedyBuy.' in text
     assert 'Популярные товары' in text
     assert 'Новинки каталога' in text
+    assert '<a href="/marketplace" class="primary-btn">Перейти в маркетплейс</a>' in text
+    assert text.count('<a href="/marketplace">Смотреть всё</a>') == 2
+    assert '<a href="/support" class="primary-btn">Связаться с поддержкой</a>' in text
+    assert 'Все товары' not in text
+    assert 'category=all' not in text
 
 
 def test_add_to_cart_increases_quantity(client):
@@ -35,6 +43,47 @@ def test_database_has_seed_products():
     products = get_products()
     assert len(products) >= 5
     assert any(product['name'] == 'Galaxy A55' for product in products)
+
+
+def test_new_products_are_ordered_by_creation_date(tmp_path, monkeypatch):
+    database_path = tmp_path / 'catalog.db'
+    monkeypatch.setattr(app_module, 'DB_PATH', str(database_path))
+    connection = sqlite3.connect(database_path)
+    connection.execute(
+        'CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, is_active INTEGER, is_new INTEGER, created_at TEXT)'
+    )
+    connection.executemany(
+        'INSERT INTO products (id, name, is_active, is_new, created_at) VALUES (?, ?, 1, 0, ?)',
+        [(1, 'Older product', '2026-01-01 10:00:00'), (2, 'Newer product', '2026-02-01 10:00:00')]
+    )
+    connection.commit()
+    connection.close()
+
+    assert [product['name'] for product in get_new_products()] == ['Newer product', 'Older product']
+
+
+def test_popular_products_are_ranked_by_number_of_orders(tmp_path, monkeypatch):
+    database_path = tmp_path / 'catalog.db'
+    monkeypatch.setattr(app_module, 'DB_PATH', str(database_path))
+    connection = sqlite3.connect(database_path)
+    connection.execute(
+        'CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, is_active INTEGER, created_at TEXT)'
+    )
+    connection.execute(
+        'CREATE TABLE order_items (order_id INTEGER, product_id INTEGER, quantity INTEGER)'
+    )
+    connection.executemany(
+        'INSERT INTO products (id, name, is_active, created_at) VALUES (?, ?, 1, ?)',
+        [(1, 'One large order', '2026-01-01 10:00:00'), (2, 'Repeated orders', '2026-01-02 10:00:00')]
+    )
+    connection.executemany(
+        'INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, ?)',
+        [(1, 1, 10), (2, 2, 1), (3, 2, 1)]
+    )
+    connection.commit()
+    connection.close()
+
+    assert [product['name'] for product in get_popular_products()] == ['Repeated orders', 'One large order']
 
 
 def test_order_is_saved_in_database(client):
@@ -67,6 +116,36 @@ def test_marketplace_page_has_categories_and_search(client):
     assert 'Ключи' in text
     assert 'Игры' in text
     assert 'Поиск' in text
+    assert 'tabs-row' not in text
+    assert text.count('>Подписки</a>') == 1
+    assert text.count('>Ключи</a>') == 1
+    assert text.count('>Игры</a>') == 1
+    assert 'onchange="this.form.submit()"' in text
+
+
+def test_marketplace_sort_form_preserves_selected_category(client):
+    response = client.get('/marketplace?category=Игры&sort=price_asc')
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<input type="hidden" name="category" value="Игры">' in text
+    assert '<option value="price_asc" selected>Цена: низкая → высокая</option>' in text
+
+
+def test_marketplace_renders_product_image_at_card_size(client):
+    assert app_module.create_product_in_db(
+        'Product with image',
+        'Игры',
+        '999',
+        'Product description',
+        'Steam',
+        'https://example.com/product.jpg',
+    )
+
+    response = client.get('/marketplace')
+    assert response.status_code == 200
+    text = response.get_data(as_text=True)
+    assert '<img class="product-image" src="https://example.com/product.jpg" alt="Product with image" loading="lazy">' in text
 
 
 def test_faq_page_loads(client):
@@ -92,10 +171,60 @@ def test_admin_can_add_product(client):
         'price': '999',
         'description': 'Тестовый товар для админки',
         'app_type': 'Steam',
+        'image_url': 'https://example.com/test-product.jpg',
     }, follow_redirects=True)
     assert response.status_code == 200
     assert len(get_products()) == before + 1
-    assert any(product['name'] == 'Test Product' for product in get_products())
+    product = max(
+        (product for product in get_products() if product['name'] == 'Test Product'),
+        key=lambda product: product['id']
+    )
+    assert product['image_url'] == 'https://example.com/test-product.jpg'
+
+
+def test_admin_can_edit_product_name_and_image(client):
+    assert app_module.create_product_in_db('Editable product', 'Игры', '500', 'Description')
+    product = next(product for product in get_products() if product['name'] == 'Editable product')
+    client.post('/admin', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+    response = client.post(
+        f"/admin/products/{product['id']}/edit",
+        data={'name': 'Updated product', 'image_url': 'https://example.com/updated.jpg'},
+        follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    updated = app_module.get_product_by_id(product['id'])
+    assert updated['name'] == 'Updated product'
+    assert updated['image_url'] == 'https://example.com/updated.jpg'
+
+
+def test_admin_can_delete_and_restore_product(client):
+    assert app_module.create_product_in_db('Removable product', 'Игры', '500', 'Description')
+    product = next(product for product in get_products() if product['name'] == 'Removable product')
+    client.post('/admin', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+    response = client.post(
+        f"/admin/products/{product['id']}/delete",
+        follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert app_module.get_product_by_id(product['id'])['is_active'] == 0
+    assert all(item['id'] != product['id'] for item in get_products())
+    deleted_products_page = client.get('/admin/products')
+    deleted_text = deleted_products_page.get_data(as_text=True)
+    assert deleted_text.index('Управление товарами') < deleted_text.index('Удалённые товары')
+    assert 'Removable product' in deleted_text
+    assert f'/admin/products/{product["id"]}/restore' in deleted_text
+
+    response = client.post(
+        f"/admin/products/{product['id']}/restore",
+        follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert app_module.get_product_by_id(product['id'])['is_active'] == 1
 
 
 def test_support_requires_login(client):

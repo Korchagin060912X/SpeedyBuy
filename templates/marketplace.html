@@ -15,12 +15,13 @@
         </div>
         <div class="search-group">
             <label for="sort">Сортировка</label>
-            <select id="sort" name="sort">
+            <select id="sort" name="sort" onchange="this.form.submit()">
                 <option value="newest" {% if sort == 'newest' %}selected{% endif %}>По новизне</option>
                 <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Цена: низкая → высокая</option>
                 <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Цена: высокая → низкая</option>
             </select>
         </div>
+        <input type="hidden" name="category" value="{{ active_category }}">
     </form>
 
     <div class="filters">
@@ -30,16 +31,13 @@
         {% endfor %}
     </div>
 
-    <div class="tabs-row">
-        <a href="{{ url_for('marketplace', category='Подписки', search=search, sort=sort) }}" class="tab {% if active_category == 'Подписки' %}active{% endif %}">Подписки</a>
-        <a href="{{ url_for('marketplace', category='Ключи', search=search, sort=sort) }}" class="tab {% if active_category == 'Ключи' %}active{% endif %}">Ключи</a>
-        <a href="{{ url_for('marketplace', category='Игры', search=search, sort=sort) }}" class="tab {% if active_category == 'Игры' %}active{% endif %}">Игры</a>
-    </div>
-
     {% if products %}
         <div class="product-grid">
             {% for product in products %}
                 <article class="product-card">
+                    {% if product.image_url %}
+                        <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                    {% endif %}
                     <span class="badge">{{ product.category }}</span>
                     <h3>{{ product.name }}</h3>
                     <p class="product-type">{{ product.app_type }}</p>
