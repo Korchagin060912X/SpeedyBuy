@@ -14,6 +14,10 @@
             Ссылка на изображение
             <input type="url" name="image_url" value="{{ product.image_url }}" maxlength="2048" placeholder="https://example.com/image.jpg">
         </label>
+        <label>
+            Комментарий от нас
+            <textarea name="seller_comment" rows="3" maxlength="1000">{{ product.seller_comment }}</textarea>
+        </label>
         {% if product.image_url %}
             <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}">
         {% endif %}

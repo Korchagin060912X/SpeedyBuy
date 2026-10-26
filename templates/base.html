@@ -7,11 +7,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <div class="background-markings" aria-hidden="true">
+        <span>SC</span><span>SC</span><span>SC</span><span>SC</span>
+        <span>SC</span><span>SC</span><span>SC</span><span>SC</span>
+        <span>SC</span><span>SC</span><span>SC</span><span>SC</span>
+        <span>SC</span><span>SC</span><span>SC</span><span>SC</span>
+    </div>
     <header class="topbar">
         <div class="container nav">
             <div class="brand-wrap">
                 <a href="{{ url_for('index') }}" class="brand">SpeedyBuy</a>
-                <button class="menu-toggle" type="button">☰</button>
+                <a class="menu-toggle" href="{{ url_for('index') }}" aria-label="SpeedyBuy — главная">SC</a>
             </div>
             <nav class="menu">
                 <a href="{{ url_for('index') }}">Главная</a>

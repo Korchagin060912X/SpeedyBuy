@@ -24,13 +24,33 @@ def sanitize_text(value, max_len=255):
     return value[:max_len]
 
 
-def validate_order_payload(name, phone, address):
-    cleaned_name = sanitize_text(name, 120)
-    cleaned_phone = sanitize_text(phone, 40)
-    cleaned_address = sanitize_text(address, 255)
-    if len(cleaned_name) < 2 or len(cleaned_phone) < 6 or len(cleaned_address) < 5:
+def validate_order_payload(email, comment, rating):
+    cleaned_email = sanitize_text(email, 254)
+    cleaned_comment = sanitize_text(comment, 2000)
+    local_part, separator, domain = cleaned_email.rpartition('@')
+    if (
+        cleaned_email.count('@') != 1
+        or not separator
+        or not local_part
+        or '.' not in domain
+        or any(character.isspace() for character in cleaned_email)
+    ):
         return None
-    return {'name': cleaned_name, 'phone': cleaned_phone, 'address': cleaned_address}
+    domain_labels = domain.split('.')
+    if any(not label or label.startswith('-') or label.endswith('-') for label in domain_labels):
+        return None
+    if not cleaned_comment:
+        return None
+    if rating in (None, ''):
+        cleaned_rating = None
+    else:
+        try:
+            cleaned_rating = int(rating)
+        except (TypeError, ValueError):
+            return None
+        if not 1 <= cleaned_rating <= 5:
+            return None
+    return {'email': cleaned_email, 'comment': cleaned_comment, 'rating': cleaned_rating}
 
 
 @app.after_request
@@ -66,6 +86,7 @@ def init_db():
             is_active INTEGER NOT NULL DEFAULT 1,
             is_popular INTEGER NOT NULL DEFAULT 0,
             is_new INTEGER NOT NULL DEFAULT 0,
+            seller_comment TEXT NOT NULL DEFAULT '',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -120,6 +141,9 @@ def init_db():
             customer_name TEXT NOT NULL,
             phone TEXT NOT NULL,
             address TEXT NOT NULL,
+            customer_email TEXT DEFAULT '',
+            customer_comment TEXT DEFAULT '',
+            rating INTEGER,
             total_price REAL NOT NULL,
             status TEXT DEFAULT 'Ожидает оплаты',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -196,10 +220,12 @@ def init_db():
     )
 
     product_columns = {row['name'] for row in conn.execute('PRAGMA table_info(products)').fetchall()}
-    for field in ['app_type', 'image_url', 'is_active', 'is_popular', 'is_new']:
+    for field in ['app_type', 'image_url', 'is_active', 'is_popular', 'is_new', 'seller_comment']:
         if field not in product_columns:
             if field in ['is_active', 'is_popular', 'is_new']:
                 default_sql = 'INTEGER NOT NULL DEFAULT 1'
+            elif field == 'seller_comment':
+                default_sql = 'TEXT NOT NULL DEFAULT ""'
             else:
                 default_sql = 'TEXT DEFAULT ""'
             conn.execute(f'ALTER TABLE products ADD COLUMN {field} {default_sql}')
@@ -210,6 +236,9 @@ def init_db():
     order_columns = {row['name'] for row in conn.execute('PRAGMA table_info(orders)').fetchall()}
     for field, default_sql in {
         'user_id': 'INTEGER',
+        'customer_email': 'TEXT DEFAULT ""',
+        'customer_comment': 'TEXT DEFAULT ""',
+        'rating': 'INTEGER',
         'status': 'TEXT DEFAULT "Ожидает оплаты"',
         'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
     }.items():
@@ -292,7 +321,7 @@ def get_products(category='all', search='', sort='newest'):
         query += ' ORDER BY id DESC'
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return add_product_ratings([dict(row) for row in rows])
 
 
 def get_categories():
@@ -309,13 +338,39 @@ def get_product_by_id(product_id):
     return get_db_row_to_dict(row)
 
 
+def add_product_ratings(products):
+    if not products:
+        return products
+    product_ids = [product['id'] for product in products]
+    placeholders = ', '.join('?' for _ in product_ids)
+    conn = get_db()
+    rows = conn.execute(
+        f'''
+        SELECT product_id, ROUND(AVG(rating), 1) AS rating
+        FROM (
+            SELECT DISTINCT oi.product_id, oi.order_id, o.rating
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            WHERE oi.product_id IN ({placeholders}) AND o.rating BETWEEN 1 AND 5
+        )
+        GROUP BY product_id
+        ''',
+        product_ids
+    ).fetchall()
+    conn.close()
+    ratings = {row['product_id']: row['rating'] for row in rows}
+    for product in products:
+        product['rating'] = ratings.get(product['id'], 5.0)
+    return products
+
+
 def get_popular_products(limit=3):
     conn = get_db()
     rows = conn.execute(
         '''
         SELECT p.*, COUNT(DISTINCT oi.order_id) AS order_count
         FROM products p
-        JOIN order_items oi ON oi.product_id = p.id
+        LEFT JOIN order_items oi ON oi.product_id = p.id
         WHERE p.is_active = 1
         GROUP BY p.id
         ORDER BY order_count DESC, p.created_at DESC, p.id DESC
@@ -324,7 +379,7 @@ def get_popular_products(limit=3):
         (limit,)
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return add_product_ratings([dict(row) for row in rows])
 
 
 def get_new_products(limit=3):
@@ -334,7 +389,7 @@ def get_new_products(limit=3):
         (limit,)
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return add_product_ratings([dict(row) for row in rows])
 
 
 def get_faq_items():
@@ -401,12 +456,12 @@ def build_cart():
             continue
         item_total = float(product['price']) * qty
         total += item_total
-        items.append({'id': product['id'], 'name': product['name'], 'category': product['category'], 'app_type': product['app_type'], 'description': product['description'], 'price': product['price'], 'quantity': qty, 'item_total': item_total})
+        items.append({'id': product['id'], 'name': product['name'], 'category': product['category'], 'app_type': product['app_type'], 'description': product['description'], 'seller_comment': product['seller_comment'], 'price': product['price'], 'quantity': qty, 'item_total': item_total})
     return items, total
 
 
-def create_order_in_db(name, phone, address, cart):
-    cleaned = validate_order_payload(name, phone, address)
+def create_order_in_db(email, comment, rating, cart):
+    cleaned = validate_order_payload(email, comment, rating)
     if not cleaned:
         return None
     items = []
@@ -423,8 +478,10 @@ def create_order_in_db(name, phone, address, cart):
         return None
     conn = get_db()
     cursor = conn.execute(
-        'INSERT INTO orders (user_id, customer_name, phone, address, total_price, status) VALUES (?, ?, ?, ?, ?, ?)',
-        (session.get('user_id'), cleaned['name'], cleaned['phone'], cleaned['address'], total, 'Ожидает оплаты')
+        '''INSERT INTO orders (
+            user_id, customer_name, phone, address, customer_email, customer_comment, rating, total_price, status
+        ) VALUES (?, '', '', '', ?, ?, ?, ?, ?)''',
+        (session.get('user_id'), cleaned['email'], cleaned['comment'], cleaned['rating'], total, 'Ожидает оплаты')
     )
     order_id = cursor.lastrowid
     for item in items:
@@ -434,15 +491,16 @@ def create_order_in_db(name, phone, address, cart):
         )
     conn.execute('INSERT INTO payments (order_id, provider, amount, status) VALUES (?, ?, ?, ?)', (order_id, 'manual', total, 'pending'))
     conn.commit(); conn.close()
-    return {'id': order_id, 'name': cleaned['name'], 'phone': cleaned['phone'], 'address': cleaned['address'], 'items': items, 'total': total}
+    return {'id': order_id, **cleaned, 'items': items, 'total': total}
 
 
-def create_product_in_db(name, category, price, description, app_type='', image_url=''):
+def create_product_in_db(name, category, price, description, app_type='', image_url='', seller_comment=''):
     name = sanitize_text(name, 120)
     category = sanitize_text(category, 80)
     description = sanitize_text(description, 1000)
     app_type = sanitize_text(app_type, 80)
     image_url = sanitize_text(image_url, 2048)
+    seller_comment = sanitize_text(seller_comment, 1000)
     try:
         price_value = float(price)
     except (TypeError, ValueError):
@@ -451,8 +509,11 @@ def create_product_in_db(name, category, price, description, app_type='', image_
         return False
     conn = get_db()
     conn.execute(
-        'INSERT INTO products (name, category, price, description, app_type, image_url, is_active, is_popular, is_new, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-        (name, category, price_value, description, app_type, image_url, 1, 0, 0)
+        '''INSERT INTO products (
+            name, category, price, description, app_type, image_url, seller_comment,
+            is_active, is_popular, is_new, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+        (name, category, price_value, description, app_type, image_url, seller_comment, 1, 0, 0)
     )
     conn.commit(); conn.close()
     return True
@@ -464,7 +525,14 @@ def get_orders():
     orders = []
     for row in rows:
         order = dict(row)
-        item_rows = conn.execute('SELECT oi.*, p.name AS product_name, p.category FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?', (order['id'],)).fetchall()
+        item_rows = conn.execute(
+            '''SELECT oi.*, p.name AS product_name, p.category,
+                      oi.quantity * oi.price AS item_total
+               FROM order_items oi
+               JOIN products p ON p.id = oi.product_id
+               WHERE oi.order_id = ?''',
+            (order['id'],)
+        ).fetchall()
         order['items'] = [dict(item) for item in item_rows]
         orders.append(order)
     conn.close()
@@ -651,21 +719,33 @@ def cart_page():
 @app.route('/checkout')
 def checkout():
     items, total = build_cart()
-    return render_template('checkout.html', items=items, total=total)
+    return render_template('checkout.html', items=items, total=total, error=None, form_data={})
 
 
 @app.route('/order', methods=['POST'])
 def create_order():
-    name = request.form.get('name', '').strip()
-    phone = request.form.get('phone', '').strip()
-    address = request.form.get('address', '').strip()
-    if not name or not phone or not address:
-        return redirect(url_for('checkout'))
+    email = request.form.get('email', '').strip()
+    comment = request.form.get('comment', '').strip()
+    rating = request.form.get('rating', '').strip()
     items, total = build_cart()
     if not items:
         return redirect(url_for('cart_page'))
-    order = create_order_in_db(name, phone, address, {str(item['id']): item['quantity'] for item in items})
+    if validate_order_payload(email, comment, rating) is None:
+        return render_template(
+            'checkout.html',
+            items=items,
+            total=total,
+            error='Укажите корректную почту и обязательный комментарий к заказу. Оценка должна быть от 1 до 5 звёзд.',
+            form_data=request.form,
+        ), 400
+    order = create_order_in_db(
+        email,
+        comment,
+        rating,
+        {str(item['id']): item['quantity'] for item in items}
+    )
     if order is None:
+        flash('Не удалось оформить заказ. Проверьте товары в корзине.')
         return redirect(url_for('cart_page'))
     session['cart'] = {}
     return render_template('order_success.html', order=order)
@@ -729,14 +809,15 @@ def admin_products_edit(product_id):
     if request.method == 'POST':
         name = sanitize_text(request.form.get('name'), 120)
         image_url = sanitize_text(request.form.get('image_url'), 2048)
+        seller_comment = sanitize_text(request.form.get('seller_comment'), 1000)
         if not name:
             flash('Название товара обязательно.')
             return render_template('admin_product_edit.html', product=product)
 
         conn = get_db()
         conn.execute(
-            'UPDATE products SET name = ?, image_url = ? WHERE id = ?',
-            (name, image_url, product_id)
+            'UPDATE products SET name = ?, image_url = ?, seller_comment = ? WHERE id = ?',
+            (name, image_url, seller_comment, product_id)
         )
         conn.commit()
         conn.close()
@@ -795,7 +876,8 @@ def admin_products_add():
     description = request.form.get('description', '').strip()
     app_type = request.form.get('app_type', '').strip()
     image_url = request.form.get('image_url', '').strip()
-    if create_product_in_db(name, category, price, description, app_type, image_url):
+    seller_comment = request.form.get('seller_comment', '').strip()
+    if create_product_in_db(name, category, price, description, app_type, image_url, seller_comment):
         flash('Товар успешно добавлен.')
     else:
         flash('Ошибка: проверьте название, цену и категорию.')
@@ -808,7 +890,13 @@ def admin_orders():
     if not is_admin_user(user):
         return redirect(url_for('admin_panel'))
     orders = get_orders()
-    return render_template('admin_orders.html', orders=orders)
+    active_orders = [order for order in orders if order['status'] != 'Завершён']
+    completed_orders = [order for order in orders if order['status'] == 'Завершён']
+    return render_template(
+        'admin_orders.html',
+        orders=active_orders,
+        completed_orders=completed_orders
+    )
 
 
 @app.route('/admin/orders/<int:order_id>')
@@ -822,6 +910,25 @@ def admin_order_detail(order_id):
         abort(404)
     order_items = order.get('items', [])
     return render_template('admin_order_detail.html', order=order, items=order_items)
+
+
+@app.route('/admin/orders/<int:order_id>/complete', methods=['POST'])
+def admin_order_complete(order_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    cursor = conn.execute(
+        "UPDATE orders SET status = 'Завершён' WHERE id = ? AND status != 'Завершён'",
+        (order_id,)
+    )
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        abort(404)
+    flash(f'Заказ #{order_id} завершён.')
+    return redirect(url_for('admin_orders'))
 
 
 if __name__ == '__main__':

@@ -5,9 +5,12 @@
 {% block content %}
 <section class="success-box">
     <h2>Заказ успешно оформлен</h2>
-    <p>Спасибо, {{ order.name }}! Ваш заказ принят на обработку.</p>
-    <p>Телефон: {{ order.phone }}</p>
-    <p>Адрес: {{ order.address }}</p>
+    <p>Ваш заказ принят на обработку.</p>
+    <p>Подтверждение заказа: {{ order.email }}</p>
+    <p><strong>Комментарий к заказу:</strong> {{ order.comment }}</p>
+    {% if order.rating %}
+        <p>Ваша оценка: {{ order.rating }} из 5 звёзд</p>
+    {% endif %}
     <p><strong>Итого: {{ "{:,.0f}".format(order.total) }} ₽</strong></p>
     <a class="primary-btn" href="{{ url_for('index') }}">Вернуться в каталог</a>
 </section>

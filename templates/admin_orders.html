@@ -15,9 +15,10 @@
             {% for order in orders %}
                 <div class="cart-item">
                     <div>
-                        <h3>#{{ order.id }} — {{ order.customer_name }}</h3>
-                        <p>{{ order.phone }}</p>
-                        <p>{{ order.address }}</p>
+                        <h3>#{{ order.id }} — {{ order.customer_email or order.customer_name }}</h3>
+                        {% if order.customer_comment %}
+                            <p>{{ order.customer_comment }}</p>
+                        {% endif %}
                     </div>
                     <div class="cart-meta">
                         <span>{{ order.total_price }} ₽</span>
@@ -27,7 +28,31 @@
             {% endfor %}
         </div>
     {% else %}
-        <p>Заказов пока нет.</p>
+        <p>Активных заказов нет.</p>
     {% endif %}
+
+    <section class="completed-orders">
+        <h2>Завершённые заказы</h2>
+        {% if completed_orders %}
+            <div class="cart-list">
+                {% for order in completed_orders %}
+                    <div class="cart-item">
+                        <div>
+                            <h3>#{{ order.id }} — {{ order.customer_email or order.customer_name }}</h3>
+                            <p>{{ order.status }}</p>
+                            {% if order.customer_comment %}
+                                <p>{{ order.customer_comment }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="cart-meta">
+                            <span>{{ order.total_price }} ₽</span>
+                            <a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="secondary-btn">Подробнее</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Завершённых заказов пока нет.</p>
+        {% endif %}
 </section>
 {% endblock %}

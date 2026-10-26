@@ -42,7 +42,14 @@
                 {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
+                <div class="product-rating" aria-label="Рейтинг {{ '%.1f'|format(product.rating) }} из 5">
+                    <span class="rating-stars" style="--rating: {{ product.rating * 20 }}%">★★★★★</span>
+                    <strong>{{ '%.1f'|format(product.rating) }}</strong>
+                </div>
                 <p>{{ product.description }}</p>
+                {% if product.seller_comment %}
+                    <p class="seller-comment"><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
+                {% endif %}
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
@@ -67,7 +74,14 @@
                 {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
+                <div class="product-rating" aria-label="Рейтинг {{ '%.1f'|format(product.rating) }} из 5">
+                    <span class="rating-stars" style="--rating: {{ product.rating * 20 }}%">★★★★★</span>
+                    <strong>{{ '%.1f'|format(product.rating) }}</strong>
+                </div>
                 <p>{{ product.description }}</p>
+                {% if product.seller_comment %}
+                    <p class="seller-comment"><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
+                {% endif %}
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">

@@ -42,6 +42,10 @@
                 Описание
                 <textarea name="description" rows="4" required></textarea>
             </label>
+            <label>
+                Комментарий от нас
+                <textarea name="seller_comment" rows="3" maxlength="1000" placeholder="Например, важные условия или особенности товара"></textarea>
+            </label>
             <button type="submit" class="primary-btn">Добавить товар</button>
         </form>
     </div>
@@ -56,6 +60,9 @@
                     <h3>{{ product.name }}</h3>
                     <p>{{ product.category }} · {{ product.app_type }}</p>
                     <p>{{ product.description[:80] }}</p>
+                    {% if product.seller_comment %}
+                        <p><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
+                    {% endif %}
                 </div>
                 <div class="cart-meta">
                     <span>{{ product.price }} ₽</span>
@@ -81,6 +88,9 @@
                             <h3>{{ product.name }}</h3>
                             <p>{{ product.category }} · {{ product.app_type }}</p>
                             <p>{{ product.description[:80] }}</p>
+                            {% if product.seller_comment %}
+                                <p><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
+                            {% endif %}
                             <p class="admin-product-status">Удалён из каталога</p>
                         </div>
                         <div class="cart-meta">

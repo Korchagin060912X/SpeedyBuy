@@ -17,6 +17,9 @@
                     <div class="cart-meta">
                         <span>{{ item.quantity }} шт.</span>
                         <strong>{{ "{:,.0f}".format(item.item_total) }} ₽</strong>
+                        <form action="{{ url_for('remove_from_cart', product_id=item.id) }}" method="post">
+                            <button type="submit">Убрать из корзины</button>
+                        </form>
                     </div>
                 </div>
             {% endfor %}

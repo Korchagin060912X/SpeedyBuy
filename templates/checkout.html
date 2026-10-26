@@ -7,27 +7,41 @@
     <h2>Оформление заказа</h2>
 
     {% if items %}
+        {% if error %}
+            <p class="form-error" role="alert">{{ error }}</p>
+        {% endif %}
         <div class="checkout-layout">
             <form action="{{ url_for('create_order') }}" method="post" class="checkout-form">
                 <label>
-                    Имя
-                    <input type="text" name="name" placeholder="Иван" required>
+                    Ваша почта
+                    <input type="email" name="email" value="{{ form_data.get('email', '') }}" maxlength="254" autocomplete="email" placeholder="name@example.com" required>
                 </label>
                 <label>
-                    Телефон
-                    <input type="tel" name="phone" placeholder="+7 900 123 45 67" required>
+                    Комментарий к заказу
+                    <textarea name="comment" rows="4" maxlength="2000" placeholder="Укажите важную информацию по заказу" required>{{ form_data.get('comment', '') }}</textarea>
                 </label>
-                <label>
-                    Адрес доставки
-                    <textarea name="address" rows="4" placeholder="Улица, дом, квартира" required></textarea>
-                </label>
+                <fieldset class="rating-picker" data-rating-group>
+                    <legend>Оценка заказа (необязательно)</legend>
+                    <input type="hidden" name="rating" value="{{ form_data.get('rating', '') }}">
+                    <div class="rating-choices" role="group" aria-label="Оценка от 1 до 5 звёзд">
+                        {% for star in range(1, 6) %}
+                            <button type="button" class="rating-choice" data-rating-value="{{ star }}" aria-label="{{ star }} звёзд" aria-pressed="false">★</button>
+                        {% endfor %}
+                    </div>
+                    <small>Нажмите на звезду ещё раз, чтобы снять оценку.</small>
+                </fieldset>
                 <button type="submit" class="primary-btn">Подтвердить заказ</button>
             </form>
 
             <aside class="order-summary">
                 {% for item in items %}
                     <div class="summary-item">
-                        <span>{{ item.name }} × {{ item.quantity }}</span>
+                        <div>
+                            <span>{{ item.name }} × {{ item.quantity }}</span>
+                            {% if item.seller_comment %}
+                                <p class="seller-comment"><strong>Комментарий от нас:</strong> {{ item.seller_comment }}</p>
+                            {% endif %}
+                        </div>
                         <strong>{{ "{:,.0f}".format(item.item_total) }} ₽</strong>
                     </div>
                 {% endfor %}
@@ -43,4 +57,27 @@
         <a class="primary-btn" href="{{ url_for('index') }}">Вернуться в каталог</a>
     {% endif %}
 </section>
+<script>
+    const ratingGroup = document.querySelector('[data-rating-group]');
+    if (ratingGroup) {
+        const ratingInput = ratingGroup.querySelector('input[name="rating"]');
+        const ratingButtons = ratingGroup.querySelectorAll('[data-rating-value]');
+        const updateRating = (rating) => {
+            ratingButtons.forEach((button) => {
+                const selected = Number(button.dataset.ratingValue) <= rating;
+                button.classList.toggle('selected', selected);
+                button.setAttribute('aria-pressed', String(Number(button.dataset.ratingValue) === rating));
+            });
+        };
+        updateRating(Number(ratingInput.value) || 0);
+        ratingButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const selectedRating = Number(button.dataset.ratingValue);
+                const nextRating = Number(ratingInput.value) === selectedRating ? 0 : selectedRating;
+                ratingInput.value = nextRating || '';
+                updateRating(nextRating);
+            });
+        });
+    }
+</script>
 {% endblock %}
