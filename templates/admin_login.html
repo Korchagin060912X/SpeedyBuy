@@ -6,18 +6,17 @@
 <section class="checkout-layout">
     <div class="checkout-form">
         <h2>Админ-панель</h2>
-        <p>Вход только для администратора.</p>
-        <p><strong>Логин:</strong> admin</p>
-        <p><strong>Пароль:</strong> admin123</p>
+        <p>Только Администратор может зайти в этот отдел!</p>
+        <p>Войдите под администратором, чтобы продолжить.</p>
 
         <form method="post" action="{{ url_for('admin_panel') }}">
             <label>
                 Логин
-                <input type="text" name="username" value="admin" required>
+                <input type="text" name="username" autocomplete="username" required>
             </label>
             <label>
                 Пароль
-                <input type="password" name="password" value="admin123" required>
+                <input type="password" name="password" autocomplete="current-password" required>
             </label>
             <button type="submit" class="primary-btn">Войти в админку</button>
         </form>

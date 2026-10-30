@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — пользователи{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Пользователи</h2>
+    <div class="admin-actions">
+        <a href="{{ url_for('admin_orders') }}" class="secondary-btn">Заказы</a>
+        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Товары</a>
+        <a href="{{ url_for('admin_users') }}" class="secondary-btn">Пользователи</a>
+    </div>
+
+    {% if users %}
+        <div class="cart-list">
+            {% for user in users %}
+                <article class="cart-item">
+                    <div>
+                        <h3>{{ user.username }}</h3>
+                        <p>Заказов: {{ user.order_count }}</p>
+                        <p>Последний заказ:
+                            {% if user.last_order_id %}
+                                <a href="{{ url_for('admin_order_detail', order_id=user.last_order_id) }}">#{{ user.last_order_id }}</a>
+                                · {{ user.last_order_at }}
+                            {% else %}
+                                ещё не оформлял
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="cart-meta">
+                        <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="primary-btn">Открыть пользователя</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Пользователей пока нет.</p>
+    {% endif %}
+</section>
+{% endblock %}

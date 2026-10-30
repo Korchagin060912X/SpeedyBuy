@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — пользователь {{ user.username }}{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Пользователь: {{ user.username }}</h2>
+    <div class="admin-actions">
+        <a href="{{ url_for('admin_orders') }}" class="secondary-btn">Заказы</a>
+        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Товары</a>
+        <a href="{{ url_for('admin_users') }}" class="secondary-btn">Пользователи</a>
+    </div>
+
+    <form method="post" class="checkout-form user-edit-form">
+        <h3>Данные аккаунта</h3>
+        <label>
+            Никнейм
+            <input type="text" name="username" value="{{ user.username }}" maxlength="50" required>
+        </label>
+        <label>
+            Новый пароль (оставьте пустым, чтобы не менять)
+            <input type="password" name="password" autocomplete="new-password" minlength="6" maxlength="100">
+        </label>
+        <label>
+            Число заказов для отображения в профиле
+            <input type="number" name="order_count" min="0" max="1000000" value="{{ user.order_count }}" required>
+        </label>
+        <p>Фактических заказов в истории: {{ actual_order_count }}</p>
+        <button type="submit" class="primary-btn">Сохранить</button>
+    </form>
+
+    <section class="catalog-section">
+        <h2>Заказы пользователя</h2>
+        {% if orders %}
+            <div class="cart-list">
+                {% for order in orders %}
+                    <article class="cart-item">
+                        <div>
+                            <h3><a href="{{ url_for('admin_order_detail', order_id=order.id) }}">Заказ #{{ order.id }}</a></h3>
+                            <p>{{ order.created_at }} · {{ order.status }}</p>
+                            <p>Почта: {{ order.customer_email }}</p>
+                            {% if order.customer_comment %}
+                                <p>Комментарий к заказу: {{ order.customer_comment }}</p>
+                            {% endif %}
+                            <p>Товары:
+                                {% for item in order['items'] %}
+                                    {{ item.product_name }} × {{ item.quantity }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                        </div>
+                        <div class="cart-meta">
+                            <strong>{{ order.total_price }} ₽</strong>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Пользователь ещё не оформлял заказов из аккаунта.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

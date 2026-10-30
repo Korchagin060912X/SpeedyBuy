@@ -250,6 +250,20 @@ body {
     background: #0d1522;
 }
 
+.product-image-wrap {
+    position: relative;
+}
+
+.product-watermark {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    color: #fff;
+    font-weight: 700;
+    opacity: 0.25;
+    pointer-events: none;
+}
+
 .admin-product-image {
     display: block;
     width: 120px;
@@ -485,7 +499,8 @@ body {
 }
 
 .checkout-form input,
-.checkout-form textarea {
+.checkout-form textarea,
+.checkout-form select {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid #24334b;
@@ -493,6 +508,23 @@ body {
     background: #0d1522;
     color: #f5f7fa;
     font: inherit;
+}
+
+.user-edit-form {
+    max-width: 640px;
+    margin-top: 20px;
+}
+
+.profile-logout-btn {
+    justify-self: start;
+    align-self: start;
+    min-width: 110px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.profile-account-form {
+    align-content: start;
 }
 
 .rating-picker {

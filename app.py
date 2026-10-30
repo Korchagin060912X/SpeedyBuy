@@ -1,8 +1,10 @@
 import hashlib
+import hmac
 import os
 import sqlite3
 
 from flask import Flask, render_template, request, redirect, url_for, session, abort, flash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.config.update(
@@ -62,7 +64,7 @@ def add_security_headers(response):
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return generate_password_hash(password, method='pbkdf2:sha256')
 
 
 def get_db():
@@ -94,6 +96,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            is_admin INTEGER NOT NULL DEFAULT 0,
+            order_count_adjustment INTEGER NOT NULL DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -229,6 +233,12 @@ def init_db():
             else:
                 default_sql = 'TEXT DEFAULT ""'
             conn.execute(f'ALTER TABLE products ADD COLUMN {field} {default_sql}')
+
+    user_columns = {row['name'] for row in conn.execute('PRAGMA table_info(users)').fetchall()}
+    if 'is_admin' not in user_columns:
+        conn.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0')
+    if 'order_count_adjustment' not in user_columns:
+        conn.execute('ALTER TABLE users ADD COLUMN order_count_adjustment INTEGER NOT NULL DEFAULT 0')
     if 'created_at' not in product_columns:
         conn.execute('ALTER TABLE products ADD COLUMN created_at TEXT')
         conn.execute('UPDATE products SET created_at = CURRENT_TIMESTAMP')
@@ -289,9 +299,16 @@ def init_db():
     for key, value in default_settings.items():
         conn.execute('INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)', (key, value))
 
-    admin_exists = conn.execute('SELECT 1 FROM users WHERE username = ?', ('admin',)).fetchone()
+    admin_exists = conn.execute('SELECT 1 FROM users WHERE is_admin = 1').fetchone()
     if not admin_exists:
-        conn.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', ('admin', hash_password('admin123')))
+        legacy_admin = conn.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
+        if legacy_admin:
+            conn.execute('UPDATE users SET is_admin = 1 WHERE id = ?', (legacy_admin['id'],))
+        else:
+            conn.execute(
+                'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)',
+                ('admin', hash_password('admin123'))
+            )
 
     conn.commit()
     conn.close()
@@ -519,9 +536,15 @@ def create_product_in_db(name, category, price, description, app_type='', image_
     return True
 
 
-def get_orders():
+def get_orders(user_id=None):
     conn = get_db()
-    rows = conn.execute('SELECT * FROM orders ORDER BY id DESC').fetchall()
+    if user_id is None:
+        rows = conn.execute('SELECT * FROM orders ORDER BY id DESC').fetchall()
+    else:
+        rows = conn.execute(
+            'SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC',
+            (user_id,)
+        ).fetchall()
     orders = []
     for row in rows:
         order = dict(row)
@@ -557,7 +580,15 @@ def login_user(username, password):
     conn.close()
     if not user:
         return None
-    if user['password_hash'] != hash_password(password):
+    stored_hash = user['password_hash']
+    if len(stored_hash) == 64 and all(character in '0123456789abcdef' for character in stored_hash.lower()):
+        if not hmac.compare_digest(stored_hash, hashlib.sha256(password.encode('utf-8')).hexdigest()):
+            return None
+        conn = get_db()
+        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (hash_password(password), user['id']))
+        conn.commit()
+        conn.close()
+    elif not check_password_hash(stored_hash, password):
         return None
     session['user_id'] = user['id']
     session['username'] = user['username']
@@ -568,7 +599,7 @@ def is_admin_user(user=None):
     current_user = user or get_current_user()
     if isinstance(current_user, sqlite3.Row):
         current_user = dict(current_user)
-    return bool(current_user and current_user.get('username') == 'admin')
+    return bool(current_user and current_user.get('is_admin'))
 
 
 def register_user(username, password):
@@ -682,7 +713,12 @@ def profile_page():
                 return redirect(url_for('profile_page'))
             flash('Неверный никнейм или пароль.')
             return redirect(url_for('profile_page'))
-    return render_template('profile.html', user=user)
+    orders = get_orders(user['id']) if user else []
+    if user:
+        user['order_count'] = (
+            max(0, len(orders) + user['order_count_adjustment'])
+        )
+    return render_template('profile.html', user=user, orders=orders)
 
 
 @app.route('/logout')
@@ -793,6 +829,100 @@ def admin_products():
         'admin_products.html',
         products=products,
         deleted_products=deleted_products
+    )
+
+
+@app.route('/admin/users')
+def admin_users():
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    conn = get_db()
+    users = conn.execute(
+        '''
+        SELECT u.id, u.username, u.created_at, u.order_count_adjustment,
+               MAX(0, COUNT(o.id) + u.order_count_adjustment) AS order_count,
+               MAX(o.created_at) AS last_order_at,
+               (SELECT latest.id FROM orders latest
+                WHERE latest.user_id = u.id ORDER BY latest.id DESC LIMIT 1) AS last_order_id
+        FROM users u
+        LEFT JOIN orders o ON o.user_id = u.id
+        WHERE u.is_admin = 0
+        GROUP BY u.id
+        ORDER BY u.id DESC
+        '''
+    ).fetchall()
+    conn.close()
+    return render_template('admin_users.html', users=[dict(row) for row in users])
+
+
+@app.route('/admin/users/<int:user_id>', methods=['GET', 'POST'])
+def admin_user_detail(user_id):
+    admin = get_current_user()
+    if not is_admin_user(admin):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    user = conn.execute(
+        'SELECT * FROM users WHERE id = ? AND is_admin = 0',
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    if user is None:
+        abort(404)
+    user = dict(user)
+
+    if request.method == 'POST':
+        username = sanitize_text(request.form.get('username'), 50)
+        password = request.form.get('password', '').strip()
+        try:
+            order_count = int(request.form.get('order_count', ''))
+        except ValueError:
+            order_count = -1
+
+        conn = get_db()
+        duplicate = conn.execute(
+            'SELECT 1 FROM users WHERE username = ? AND id != ?',
+            (username, user_id)
+        ).fetchone()
+        actual_order_count = conn.execute(
+            'SELECT COUNT(*) FROM orders WHERE user_id = ?',
+            (user_id,)
+        ).fetchone()[0]
+        if len(username) < 3 or duplicate or order_count < 0 or order_count > 1000000:
+            conn.close()
+            flash('Проверьте никнейм и число заказов: ник должен быть уникальным, число — от 0 до 1 000 000.')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        if password and (len(password) < 6 or len(password) > 100):
+            conn.close()
+            flash('Новый пароль должен содержать от 6 до 100 символов.')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+
+        if password:
+            conn.execute(
+                'UPDATE users SET username = ?, password_hash = ?, order_count_adjustment = ? WHERE id = ?',
+                (username, hash_password(password), order_count - actual_order_count, user_id)
+            )
+        else:
+            conn.execute(
+                'UPDATE users SET username = ?, order_count_adjustment = ? WHERE id = ?',
+                (username, order_count - actual_order_count, user_id)
+            )
+        conn.commit()
+        conn.close()
+        flash('Данные пользователя обновлены.')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+
+    orders = get_orders(user_id)
+    actual_order_count = len(orders)
+    user['order_count'] = (
+        max(0, actual_order_count + user['order_count_adjustment'])
+    )
+    return render_template(
+        'admin_user_detail.html',
+        user=user,
+        orders=orders,
+        actual_order_count=actual_order_count
     )
 
 

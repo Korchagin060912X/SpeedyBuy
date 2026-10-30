@@ -38,7 +38,10 @@
         {% for product in popular_products %}
             <article class="product-card">
                 {% if product.image_url %}
-                    <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                    <div class="product-image-wrap">
+                        <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                        <span class="product-watermark" aria-hidden="true">SpeedyBuy</span>
+                    </div>
                 {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
@@ -47,9 +50,6 @@
                     <strong>{{ '%.1f'|format(product.rating) }}</strong>
                 </div>
                 <p>{{ product.description }}</p>
-                {% if product.seller_comment %}
-                    <p class="seller-comment"><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
-                {% endif %}
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
@@ -70,7 +70,10 @@
         {% for product in new_products %}
             <article class="product-card">
                 {% if product.image_url %}
-                    <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                    <div class="product-image-wrap">
+                        <img class="product-image" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+                        <span class="product-watermark" aria-hidden="true">SpeedyBuy</span>
+                    </div>
                 {% endif %}
                 <span class="badge">{{ product.category }}</span>
                 <h3>{{ product.name }}</h3>
@@ -79,9 +82,6 @@
                     <strong>{{ '%.1f'|format(product.rating) }}</strong>
                 </div>
                 <p>{{ product.description }}</p>
-                {% if product.seller_comment %}
-                    <p class="seller-comment"><strong>Комментарий от нас:</strong> {{ product.seller_comment }}</p>
-                {% endif %}
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">

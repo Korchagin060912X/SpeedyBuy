@@ -211,7 +211,7 @@ def test_order_ratings_are_averaged_per_product_and_remembered(client):
     assert '--rating: 70.0%' in marketplace
 
 
-def test_admin_seller_comment_is_saved_and_shown_in_catalog(client):
+def test_seller_comment_is_only_shown_during_checkout(client):
     assert app_module.create_product_in_db(
         'Product with seller note',
         'Игры',
@@ -227,7 +227,9 @@ def test_admin_seller_comment_is_saved_and_shown_in_catalog(client):
     assert 'Код придёт на почту после обработки заказа.' in checkout
 
     response = client.get('/marketplace')
-    assert 'Код придёт на почту после обработки заказа.' in response.get_data(as_text=True)
+    assert 'Код придёт на почту после обработки заказа.' not in response.get_data(as_text=True)
+    response = client.get('/')
+    assert 'Код придёт на почту после обработки заказа.' not in response.get_data(as_text=True)
 
     response = client.post(
         f"/admin/products/{product['id']}/edit",
@@ -289,6 +291,7 @@ def test_marketplace_renders_product_image_at_card_size(client):
     assert response.status_code == 200
     text = response.get_data(as_text=True)
     assert '<img class="product-image" src="https://example.com/product.jpg" alt="Product with image" loading="lazy">' in text
+    assert '<span class="product-watermark" aria-hidden="true">SpeedyBuy</span>' in text
 
 
 def test_faq_page_loads(client):
@@ -302,7 +305,73 @@ def test_admin_page_requires_login(client):
     response = client.get('/admin')
     assert response.status_code == 200
     text = response.get_data(as_text=True)
-    assert 'Админ-панель' in text or 'admin' in text.lower()
+    assert 'Только Администратор может зайти в этот отдел!' in text
+    assert 'admin123' not in text
+    assert 'value="admin"' not in text
+
+
+def test_admin_users_page_requires_admin_login(client):
+    response = client.get('/admin/users')
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith('/admin')
+
+
+def test_user_order_history_and_admin_user_management(client):
+    client.post('/profile', data={
+        'action': 'register',
+        'username': 'customer',
+        'password': 'secret123',
+    })
+    client.post('/cart/add/1')
+    client.post('/order', data={
+        'email': 'customer@example.com',
+        'comment': 'Order note',
+    })
+
+    profile = client.get('/profile').get_data(as_text=True)
+    assert 'Заказов на сайте: <strong>1</strong>' in profile
+    assert 'Мои заказы' in profile
+    assert 'customer@example.com' not in profile
+    assert 'profile-logout-btn' in profile
+
+    conn = app_module.get_db()
+    user_id = conn.execute('SELECT id FROM users WHERE username = ?', ('customer',)).fetchone()['id']
+    conn.close()
+    client.get('/logout')
+    client.post('/admin', data={'username': 'admin', 'password': 'admin123'})
+
+    users_page = client.get('/admin/users').get_data(as_text=True)
+    assert 'customer' in users_page
+    assert 'Заказов: 1' in users_page
+    assert '/admin/users/{}'.format(user_id) in users_page
+
+    response = client.post(
+        f'/admin/users/{user_id}',
+        data={
+            'username': 'renamed-customer',
+            'password': 'newsecret123',
+            'order_count': '7',
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert 'Данные пользователя обновлены.' in response.get_data(as_text=True)
+
+    client.get('/admin/logout')
+    client.post('/profile', data={
+        'action': 'login',
+        'username': 'renamed-customer',
+        'password': 'newsecret123',
+    })
+    profile = client.get('/profile').get_data(as_text=True)
+    assert 'Заказов на сайте: <strong>7</strong>' in profile
+    client.post('/cart/add/1')
+    client.post('/order', data={
+        'email': 'customer@example.com',
+        'comment': 'A second order',
+    })
+    profile = client.get('/profile').get_data(as_text=True)
+    assert 'Заказов на сайте: <strong>8</strong>' in profile
 
 
 def test_admin_can_add_product(client):
