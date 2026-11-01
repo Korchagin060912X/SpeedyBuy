@@ -5,11 +5,7 @@
 {% block content %}
 <section>
     <h2>Пользователь: {{ user.username }}</h2>
-    <div class="admin-actions">
-        <a href="{{ url_for('admin_orders') }}" class="secondary-btn">Заказы</a>
-        <a href="{{ url_for('admin_products') }}" class="secondary-btn">Товары</a>
-        <a href="{{ url_for('admin_users') }}" class="secondary-btn">Пользователи</a>
-    </div>
+    {% include '_admin_nav.html' %}
 
     <form method="post" class="checkout-form user-edit-form">
         <h3>Данные аккаунта</h3>
@@ -31,6 +27,7 @@
 
     <section class="catalog-section">
         <h2>Заказы пользователя</h2>
+        <a href="{{ url_for('admin_chat_detail', user_id=user.id) }}" class="primary-btn">Открыть чат с пользователем</a>
         {% if orders %}
             <div class="cart-list">
                 {% for order in orders %}

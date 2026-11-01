@@ -223,6 +223,29 @@ def init_db():
         """
     )
 
+    thread_groups = conn.execute(
+        'SELECT user_id, MIN(id) AS keep_id FROM support_threads GROUP BY user_id HAVING COUNT(*) > 1'
+    ).fetchall()
+    for group in thread_groups:
+        duplicate_ids = [
+            row['id'] for row in conn.execute(
+                'SELECT id FROM support_threads WHERE user_id = ? AND id != ?',
+                (group['user_id'], group['keep_id'])
+            ).fetchall()
+        ]
+        placeholders = ', '.join('?' for _ in duplicate_ids)
+        conn.execute(
+            f'UPDATE support_messages SET thread_id = ? WHERE thread_id IN ({placeholders})',
+            [group['keep_id'], *duplicate_ids]
+        )
+        conn.execute(
+            f'DELETE FROM support_threads WHERE id IN ({placeholders})',
+            duplicate_ids
+        )
+    conn.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS support_threads_user_id_unique ON support_threads (user_id)'
+    )
+
     product_columns = {row['name'] for row in conn.execute('PRAGMA table_info(products)').fetchall()}
     for field in ['app_type', 'image_url', 'is_active', 'is_popular', 'is_new', 'seller_comment']:
         if field not in product_columns:
@@ -618,23 +641,48 @@ def register_user(username, password):
     return login_user(username, password)
 
 
-def create_support_thread(user_id, subject, message):
+def get_or_create_support_thread(user_id):
     conn = get_db()
-    thread_id = conn.execute('INSERT INTO support_threads (user_id, subject, status) VALUES (?, ?, ?)', (user_id, subject or 'Без темы', 'open')).lastrowid
-    conn.execute('INSERT INTO support_messages (thread_id, sender_name, message, is_admin) VALUES (?, ?, ?, ?)', (thread_id, session.get('username', 'User'), message, 0))
-    conn.commit(); conn.close()
+    conn.execute(
+        "INSERT OR IGNORE INTO support_threads (user_id, subject, status) VALUES (?, 'Поддержка', 'open')",
+        (user_id,)
+    )
+    thread = conn.execute(
+        'SELECT id FROM support_threads WHERE user_id = ?',
+        (user_id,)
+    ).fetchone()
+    conn.commit()
+    conn.close()
+    return thread['id']
+
+
+def add_support_message(user_id, sender_name, message, is_admin=False):
+    thread_id = get_or_create_support_thread(user_id)
+    conn = get_db()
+    conn.execute(
+        'INSERT INTO support_messages (thread_id, sender_name, message, is_admin) VALUES (?, ?, ?, ?)',
+        (thread_id, sender_name, message, int(is_admin))
+    )
+    conn.commit()
+    conn.close()
     return thread_id
 
 
-def get_support_threads_for_user(user_id):
+def get_support_messages_for_user(user_id):
     conn = get_db()
-    rows = conn.execute('SELECT * FROM support_threads WHERE user_id = ? ORDER BY id DESC', (user_id,)).fetchall()
-    threads = []
-    for row in rows:
-        messages = conn.execute('SELECT * FROM support_messages WHERE thread_id = ? ORDER BY id ASC', (row['id'],)).fetchall()
-        threads.append({'thread': dict(row), 'messages': [dict(m) for m in messages]})
+    row = conn.execute(
+        'SELECT id FROM support_threads WHERE user_id = ?',
+        (user_id,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return []
+    messages = conn.execute(
+        'SELECT * FROM support_messages WHERE thread_id = ? ORDER BY id ASC',
+        (row['id'],)
+    ).fetchall()
     conn.close()
-    return threads
+    return [dict(message) for message in messages]
 
 
 @app.before_request
@@ -681,15 +729,17 @@ def faq_page():
 def support_page():
     user = get_current_user()
     if not user:
-        return render_template('support.html', user=None, threads=[])
+        return render_template('support.html', user=None, messages=[])
     if request.method == 'POST':
-        subject = request.form.get('subject', '').strip()
-        message = request.form.get('message', '').strip()
+        message = sanitize_text(request.form.get('message'), 2000)
         if message:
-            create_support_thread(user['id'], subject, message)
+            add_support_message(user['id'], user['username'], message)
+            flash('Сообщение отправлено в поддержку.')
+        else:
+            flash('Введите сообщение перед отправкой.')
         return redirect(url_for('support_page'))
-    threads = get_support_threads_for_user(user['id'])
-    return render_template('support.html', user=user, threads=threads)
+    messages = get_support_messages_for_user(user['id'])
+    return render_template('support.html', user=user, messages=messages)
 
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -854,6 +904,59 @@ def admin_users():
     ).fetchall()
     conn.close()
     return render_template('admin_users.html', users=[dict(row) for row in users])
+
+
+@app.route('/admin/chats')
+def admin_chats():
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    conn = get_db()
+    users = conn.execute(
+        '''
+        SELECT u.id, u.username, t.id AS thread_id,
+               (SELECT m.message FROM support_messages m
+                WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1) AS last_message,
+               (SELECT m.created_at FROM support_messages m
+                WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1) AS last_message_at
+        FROM users u
+        LEFT JOIN support_threads t ON t.user_id = u.id
+        WHERE u.is_admin = 0
+        ORDER BY COALESCE(last_message_at, u.created_at) DESC, u.id DESC
+        '''
+    ).fetchall()
+    conn.close()
+    return render_template('admin_chats.html', users=[dict(row) for row in users])
+
+
+@app.route('/admin/chats/<int:user_id>', methods=['GET', 'POST'])
+def admin_chat_detail(user_id):
+    admin = get_current_user()
+    if not is_admin_user(admin):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    chat_user = conn.execute(
+        'SELECT id, username FROM users WHERE id = ? AND is_admin = 0',
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    if not chat_user:
+        abort(404)
+    chat_user = dict(chat_user)
+
+    if request.method == 'POST':
+        message = sanitize_text(request.form.get('message'), 2000)
+        if message:
+            add_support_message(user_id, 'Поддержка SC', message, is_admin=True)
+            flash('Ответ отправлен пользователю.')
+        else:
+            flash('Введите текст ответа.')
+        return redirect(url_for('admin_chat_detail', user_id=user_id))
+
+    get_or_create_support_thread(user_id)
+    messages = get_support_messages_for_user(user_id)
+    return render_template('admin_chat_detail.html', chat_user=chat_user, messages=messages)
 
 
 @app.route('/admin/users/<int:user_id>', methods=['GET', 'POST'])

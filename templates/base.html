@@ -66,5 +66,20 @@
             </div>
         </div>
     </footer>
+    <script>
+        document.addEventListener('click', function (event) {
+            const button = event.target.closest('.faq-question');
+            if (!button) return;
+
+            const item = button.closest('.faq-item');
+            const answer = item.querySelector('.faq-answer');
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+            button.setAttribute('aria-expanded', String(!isExpanded));
+            answer.setAttribute('aria-hidden', String(isExpanded));
+            answer.inert = isExpanded;
+            item.classList.toggle('is-open', !isExpanded);
+        });
+    </script>
 </body>
 </html>

@@ -446,3 +446,113 @@ def test_support_requires_login(client):
     assert response.status_code == 200
     text = response.get_data(as_text=True)
     assert 'войдите в аккаунт' in text or 'Войти' in text
+    assert client.get('/admin/chats').status_code == 302
+    assert client.get('/admin/chats/1').status_code == 302
+
+
+def test_support_uses_one_persistent_chat_and_admin_can_reply(client):
+    client.post('/profile', data={
+        'action': 'register',
+        'username': 'chat-customer',
+        'password': 'secret123',
+    })
+    conn = app_module.get_db()
+    user_id = conn.execute(
+        'SELECT id FROM users WHERE username = ?',
+        ('chat-customer',)
+    ).fetchone()['id']
+    conn.close()
+
+    client.post('/support', data={'message': 'Первый вопрос'})
+    client.post('/support', data={'message': 'Дополнение к вопросу'})
+    conn = app_module.get_db()
+    assert conn.execute(
+        'SELECT COUNT(*) FROM support_threads WHERE user_id = ?',
+        (user_id,)
+    ).fetchone()[0] == 1
+    assert conn.execute(
+        'SELECT COUNT(*) FROM support_messages'
+    ).fetchone()[0] == 2
+    conn.close()
+
+    support_page = client.get('/support').get_data(as_text=True)
+    assert 'Первый вопрос' in support_page
+    assert 'Дополнение к вопросу' in support_page
+
+    client.get('/logout')
+    client.post('/admin', data={
+        'username': 'admin',
+        'password': 'admin123',
+    })
+    chats_page = client.get('/admin/chats')
+    assert chats_page.status_code == 200
+    assert 'chat-customer' in chats_page.get_data(as_text=True)
+
+    response = client.post(
+        f'/admin/chats/{user_id}',
+        data={'message': 'Здравствуйте, поможем разобраться!'},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert 'Поддержка SC' in response.get_data(as_text=True)
+    assert 'Здравствуйте, поможем разобраться!' in response.get_data(as_text=True)
+
+    client.get('/admin/logout')
+    client.post('/profile', data={
+        'action': 'login',
+        'username': 'chat-customer',
+        'password': 'secret123',
+    })
+    support_page = client.get('/support').get_data(as_text=True)
+    assert 'Поддержка SC' in support_page
+    assert 'Здравствуйте, поможем разобраться!' in support_page
+
+
+def test_support_migrates_existing_threads_into_one_chat(client):
+    client.post('/profile', data={
+        'action': 'register',
+        'username': 'legacy-customer',
+        'password': 'secret123',
+    })
+    conn = app_module.get_db()
+    user_id = conn.execute(
+        'SELECT id FROM users WHERE username = ?',
+        ('legacy-customer',)
+    ).fetchone()['id']
+    conn.execute('DROP INDEX support_threads_user_id_unique')
+    first_thread_id = conn.execute(
+        'INSERT INTO support_threads (user_id, subject) VALUES (?, ?)',
+        (user_id, 'Старый вопрос')
+    ).lastrowid
+    second_thread_id = conn.execute(
+        'INSERT INTO support_threads (user_id, subject) VALUES (?, ?)',
+        (user_id, 'Ещё один вопрос')
+    ).lastrowid
+    conn.execute(
+        'INSERT INTO support_messages (thread_id, sender_name, message, is_admin) VALUES (?, ?, ?, 0)',
+        (first_thread_id, 'legacy-customer', 'Сообщение из первого чата')
+    )
+    conn.execute(
+        'INSERT INTO support_messages (thread_id, sender_name, message, is_admin) VALUES (?, ?, ?, 1)',
+        (second_thread_id, 'Поддержка SC', 'Ответ из второго чата')
+    )
+    conn.commit()
+    conn.close()
+
+    app_module.init_db()
+
+    conn = app_module.get_db()
+    assert conn.execute(
+        'SELECT COUNT(*) FROM support_threads WHERE user_id = ?',
+        (user_id,)
+    ).fetchone()[0] == 1
+    messages = conn.execute(
+        '''SELECT message, thread_id FROM support_messages
+           WHERE thread_id = ? ORDER BY id''',
+        (first_thread_id,)
+    ).fetchall()
+    conn.close()
+    assert [message['message'] for message in messages] == [
+        'Сообщение из первого чата',
+        'Ответ из второго чата',
+    ]

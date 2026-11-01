@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — чаты с пользователями{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Чаты с пользователями</h2>
+    {% include '_admin_nav.html' %}
+
+    {% if users %}
+        <div class="cart-list">
+            {% for chat_user in users %}
+                <article class="cart-item">
+                    <div>
+                        <h3>{{ chat_user.username }}</h3>
+                        {% if chat_user.last_message %}
+                            <p>{{ chat_user.last_message[:140] }}{% if chat_user.last_message|length > 140 %}…{% endif %}</p>
+                            <p>Последнее сообщение: {{ chat_user.last_message_at }}</p>
+                        {% else %}
+                            <p>Чат ещё не начат</p>
+                        {% endif %}
+                    </div>
+                    <div class="cart-meta">
+                        <a href="{{ url_for('admin_chat_detail', user_id=chat_user.id) }}" class="primary-btn">Открыть чат</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Зарегистрированных пользователей пока нет.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -4,6 +4,9 @@
 
 {% block content %}
 <section class="hero-panel">
+    <div class="hero-markings" aria-hidden="true">
+        <span>SC</span><span>SC</span><span>SC</span><span>SC</span><span>SC</span>
+    </div>
     <div class="hero-copy">
         <span class="eyebrow">Цифровые товары и подписки</span>
         <h1>SpeedyBuy</h1>
@@ -114,12 +117,24 @@
 <section id="faq" class="faq-box">
     <h2>FAQ</h2>
     <div class="faq-item">
-        <strong>Как быстро приходит ключ?</strong>
-        <p>Обычно автоматически после оплаты в течение нескольких минут.</p>
+        <button class="faq-question" type="button" aria-expanded="false" aria-controls="home-faq-answer-1">
+            Как быстро приходит ключ?<span class="faq-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="faq-answer" id="home-faq-answer-1" aria-hidden="true" inert>
+            <div class="faq-answer-inner">
+                <p>Обычно автоматически после оплаты в течение нескольких минут.</p>
+            </div>
+        </div>
     </div>
     <div class="faq-item">
-        <strong>Можно ли оформить возврат?</strong>
-        <p>Если ключ уже использован, возврат обычно не предусмотрен, но поддержка поможет разобраться.</p>
+        <button class="faq-question" type="button" aria-expanded="false" aria-controls="home-faq-answer-2">
+            Можно ли оформить возврат?<span class="faq-icon" aria-hidden="true">+</span>
+        </button>
+        <div class="faq-answer" id="home-faq-answer-2" aria-hidden="true" inert>
+            <div class="faq-answer-inner">
+                <p>Если ключ уже использован, возврат обычно не предусмотрен, но поддержка поможет разобраться.</p>
+            </div>
+        </div>
     </div>
 </section>
 

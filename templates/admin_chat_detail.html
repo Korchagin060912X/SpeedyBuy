@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Чат с {{ chat_user.username }} — SpeedyBuy{% endblock %}
+
+{% block content %}
+<section class="support-box">
+    <h2>Чат с пользователем {{ chat_user.username }}</h2>
+    {% include '_admin_nav.html' %}
+
+    <div class="chat-messages" aria-live="polite">
+        {% for msg in messages %}
+            <article class="chat-message {% if msg.is_admin %}admin{% else %}user{% endif %}">
+                <strong>{% if msg.is_admin %}Поддержка SC{% else %}{{ msg.sender_name }}{% endif %}</strong>
+                <p>{{ msg.message }}</p>
+                <time>{{ msg.created_at }}</time>
+            </article>
+        {% else %}
+            <p class="chat-empty">Сообщений пока нет. Напишите пользователю первым.</p>
+        {% endfor %}
+    </div>
+
+    <form method="post" class="chat-compose">
+        <label for="chat-message">Ответ от Поддержки SC</label>
+        <textarea id="chat-message" name="message" rows="4" maxlength="2000" placeholder="Введите ответ..." required></textarea>
+        <button type="submit" class="primary-btn">Отправить ответ</button>
+    </form>
+
+    <div class="chat-actions">
+        <a href="{{ url_for('admin_chats') }}" class="secondary-btn">Назад к чатам</a>
+    </div>
+</section>
+{% endblock %}

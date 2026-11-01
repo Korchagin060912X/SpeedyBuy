@@ -30,6 +30,7 @@
     </div>
 
     <div class="admin-actions">
+        <a class="secondary-btn" href="{{ url_for('admin_chats') }}">Чаты</a>
         <a class="secondary-btn" href="{{ url_for('admin_orders') }}">Назад к заказам</a>
         {% if order.status != 'Завершён' %}
             <form method="post" action="{{ url_for('admin_order_complete', order_id=order.id) }}" onsubmit="return confirm('Завершить заказ #{{ order.id }}? Он будет перемещён в завершённые.')">

@@ -6,10 +6,16 @@
 <section class="faq-box">
     <h2>Часто задаваемые вопросы</h2>
     {% for item in faq_items %}
-        <details class="faq-item" {% if loop.first %}open{% endif %}>
-            <summary>{{ item.question }}</summary>
-            <p>{{ item.answer }}</p>
-        </details>
+        <div class="faq-item{% if loop.first %} is-open{% endif %}">
+            <button class="faq-question" type="button" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="faq-answer-{{ loop.index }}">
+                {{ item.question }}<span class="faq-icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-answer" id="faq-answer-{{ loop.index }}" aria-hidden="{{ 'false' if loop.first else 'true' }}" {% if not loop.first %}inert{% endif %}>
+                <div class="faq-answer-inner">
+                    <p>{{ item.answer }}</p>
+                </div>
+            </div>
+        </div>
     {% else %}
         <p>Вопросы пока не добавлены.</p>
     {% endfor %}
