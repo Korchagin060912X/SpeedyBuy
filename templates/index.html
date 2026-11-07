@@ -52,7 +52,7 @@
                     <span class="rating-stars" style="--rating: {{ product.rating * 20 }}%">★★★★★</span>
                     <strong>{{ '%.1f'|format(product.rating) }}</strong>
                 </div>
-                <p>{{ product.description }}</p>
+                <p>{{ product.description[:80] }}{% if product.description|length > 80 %}...{% endif %}</p>
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
@@ -84,7 +84,7 @@
                     <span class="rating-stars" style="--rating: {{ product.rating * 20 }}%">★★★★★</span>
                     <strong>{{ '%.1f'|format(product.rating) }}</strong>
                 </div>
-                <p>{{ product.description }}</p>
+                <p>{{ product.description[:80] }}{% if product.description|length > 80 %}...{% endif %}</p>
                 <div class="product-footer">
                     <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                     <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">

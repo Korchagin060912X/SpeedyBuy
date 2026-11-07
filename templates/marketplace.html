@@ -48,7 +48,7 @@
                         <strong>{{ '%.1f'|format(product.rating) }}</strong>
                     </div>
                     <p class="product-type">{{ product.app_type }}</p>
-                    <p>{{ product.description[:90] }}{% if product.description|length > 90 %}...{% endif %}</p>
+                    <p>{{ product.description }}</p>
                     <div class="product-footer">
                         <strong>{{ "{:,.0f}".format(product.price) }} ₽</strong>
                         <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
