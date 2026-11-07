@@ -366,9 +366,60 @@ def get_products(category='all', search='', sort='newest'):
 
 def get_categories():
     conn = get_db()
-    rows = conn.execute('SELECT DISTINCT category FROM products WHERE is_active = 1 ORDER BY category ASC').fetchall()
+    rows = conn.execute('SELECT name FROM categories WHERE is_active = 1 ORDER BY name ASC').fetchall()
     conn.close()
-    return [row['category'] for row in rows]
+    return [row['name'] for row in rows]
+
+def get_all_categories():
+    conn = get_db()
+    rows = conn.execute('SELECT * FROM categories ORDER BY name ASC').fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def add_category(name, description=''):
+    name = sanitize_text(name, 80)
+    description = sanitize_text(description, 500)
+    if not name:
+        return False
+    slug = name.lower().replace(' ', '-').replace('ё', 'е').replace('Ё', 'Е')
+    conn = get_db()
+    try:
+        conn.execute(
+            'INSERT INTO categories (name, slug, description, is_active) VALUES (?, ?, ?, 1)',
+            (name, slug, description)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+
+def update_category(category_id, name, description='', is_active=1):
+    name = sanitize_text(name, 80)
+    description = sanitize_text(description, 500)
+    if not name:
+        return False
+    slug = name.lower().replace(' ', '-').replace('ё', 'е').replace('Ё', 'Е')
+    conn = get_db()
+    try:
+        conn.execute(
+            'UPDATE categories SET name = ?, slug = ?, description = ?, is_active = ? WHERE id = ?',
+            (name, slug, description, is_active, category_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+
+def delete_category(category_id):
+    conn = get_db()
+    cursor = conn.execute('DELETE FROM categories WHERE id = ?', (category_id,))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
 
 
 def get_product_by_id(product_id):
@@ -547,7 +598,17 @@ def create_product_in_db(name, category, price, description, app_type='', image_
         return False
     if not name or not category or price_value <= 0:
         return False
+    
+    # Проверяем существование категории
     conn = get_db()
+    category_exists = conn.execute(
+        'SELECT 1 FROM categories WHERE name = ? AND is_active = 1',
+        (category,)
+    ).fetchone()
+    if not category_exists:
+        conn.close()
+        return False
+    
     conn.execute(
         '''INSERT INTO products (
             name, category, price, description, app_type, image_url, seller_comment,
@@ -555,7 +616,8 @@ def create_product_in_db(name, category, price, description, app_type='', image_
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
         (name, category, price_value, description, app_type, image_url, seller_comment, 1, 0, 0)
     )
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
     return True
 
 
@@ -875,10 +937,12 @@ def admin_products():
         'SELECT * FROM products WHERE is_active = 0 ORDER BY id DESC'
     ).fetchall()]
     conn.close()
+    categories = get_categories()
     return render_template(
         'admin_products.html',
         products=products,
-        deleted_products=deleted_products
+        deleted_products=deleted_products,
+        categories=categories
     )
 
 
@@ -1162,6 +1226,65 @@ def admin_order_complete(order_id):
         abort(404)
     flash(f'Заказ #{order_id} завершён.')
     return redirect(url_for('admin_orders'))
+
+
+@app.route('/admin/categories')
+def admin_categories():
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    
+    categories = get_all_categories()
+    return render_template('admin_categories.html', categories=categories)
+
+
+@app.route('/admin/categories/add', methods=['POST'])
+def admin_categories_add():
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    
+    if add_category(name, description):
+        flash(f'Категория "{name}" успешно добавлена.')
+    else:
+        flash('Ошибка: категория с таким названием уже существует или название пустое.')
+    
+    return redirect(url_for('admin_categories'))
+
+
+@app.route('/admin/categories/<int:category_id>/update', methods=['POST'])
+def admin_categories_update(category_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    is_active = request.form.get('is_active') == 'on'
+    
+    if update_category(category_id, name, description, 1 if is_active else 0):
+        flash(f'Категория "{name}" успешно обновлена.')
+    else:
+        flash('Ошибка: категория с таким названием уже существует или название пустое.')
+    
+    return redirect(url_for('admin_categories'))
+
+
+@app.route('/admin/categories/<int:category_id>/delete', methods=['POST'])
+def admin_categories_delete(category_id):
+    user = get_current_user()
+    if not is_admin_user(user):
+        return redirect(url_for('admin_panel'))
+    
+    if delete_category(category_id):
+        flash('Категория успешно удалена.')
+    else:
+        flash('Ошибка: категория не найдена.')
+    
+    return redirect(url_for('admin_categories'))
 
 
 if __name__ == '__main__':

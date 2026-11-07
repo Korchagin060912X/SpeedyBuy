@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}SpeedyBuy — управление категориями{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Управление категориями</h2>
+
+    {% include '_admin_nav.html' %}
+
+    <div class="checkout-form">
+        <h3>Добавить категорию</h3>
+        <form method="post" action="{{ url_for('admin_categories_add') }}">
+            <label>
+                Название категории
+                <input type="text" name="name" required placeholder="Например: Программное обеспечение">
+            </label>
+            <label>
+                Описание (необязательно)
+                <textarea name="description" rows="3" placeholder="Краткое описание категории"></textarea>
+            </label>
+            <button type="submit" class="primary-btn">Добавить категорию</button>
+        </form>
+    </div>
+
+    <div class="cart-list">
+        <h3>Список категорий</h3>
+        
+        {% if categories %}
+            {% for category in categories %}
+                <div class="cart-item">
+                    <div>
+                        <h3>{{ category.name }}</h3>
+                        {% if category.description %}
+                            <p>{{ category.description }}</p>
+                        {% endif %}
+                        <p>ID: {{ category.id }} | Slug: {{ category.slug }} | 
+                           {% if category.is_active %}
+                               <span style="color: #38b6ff;">Активна</span>
+                           {% else %}
+                               <span style="color: #ffb4b4;">Неактивна</span>
+                           {% endif %}
+                        </p>
+                    </div>
+                    <div class="cart-meta">
+                        <form method="post" action="{{ url_for('admin_categories_update', category_id=category.id) }}" style="display: flex; flex-direction: column; gap: 8px;">
+                            <input type="text" name="name" value="{{ category.name }}" required style="min-width: 200px;">
+                            <textarea name="description" rows="2" style="min-width: 200px;">{{ category.description or '' }}</textarea>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="is_active" {% if category.is_active %}checked{% endif %}>
+                                <span>Активна</span>
+                            </label>
+                            <button type="submit" class="secondary-btn" style="width: 100%;">Обновить</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin_categories_delete', category_id=category.id) }}" onsubmit="return confirm('Удалить категорию «{{ category.name }}»? Это не удалит товары в этой категории.')">
+                            <button type="submit" class="danger-btn">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Категории пока не добавлены.</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -18,9 +18,9 @@
             <label>
                 Категория
                 <select name="category" required>
-                    <option value="Подписки">Подписки</option>
-                    <option value="Ключи">Ключи</option>
-                    <option value="Игры">Игры</option>
+                    {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                    {% endfor %}
                 </select>
             </label>
             <label>
